@@ -1,0 +1,28 @@
+# =============================================================================
+# Profile prod: chỉ migration production (V1, V3, V4...). Không seed, không tạo/sửa schema bằng Hibernate.
+# =============================================================================
+spring:
+  flyway:
+    locations: classpath:db/migration
+    clean-disabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+# OpenAPI/Swagger tắt mặc định ở prod; bật có kiểm soát bằng biến môi trường nếu cần.
+springdoc:
+  api-docs:
+    enabled: ${OPENAPI_ENABLED:false}
+  swagger-ui:
+    enabled: ${OPENAPI_ENABLED:false}
+
+management:
+  endpoint:
+    health:
+      show-details: never
+
+logging:
+  level:
+    root: INFO
+    com.qrorder: INFO

@@ -1,0 +1,165 @@
+# =============================================================================
+# Cấu hình chung (mọi profile). Không hardcode secret/URL: mọi giá trị môi trường lấy từ biến
+# môi trường (.env / docker-compose). Profile: dev | prod (| test cho integration test).
+# Mặc định an toàn: chỉ chạy migration production (db/migration), Hibernate chỉ validate.
+# =============================================================================
+spring:
+  application:
+    name: qr-order-backend
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/qr_order}
+    username: ${DB_USERNAME:qr_order}
+    password: ${DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      pool-name: qr-order-hikari
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Schema do Flyway quản lý (SRS §11.6, F). Hibernate chỉ đối chiếu, không tạo/sửa schema.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+        format_sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+    baseline-on-migrate: false
+    clean-disabled: true
+
+  servlet:
+    multipart:
+      # Ảnh món (Giai đoạn 2): Tomcat chặn sớm file quá lớn -> 413 IMAGE_TOO_LARGE. Dùng chung MENU_IMAGE_MAX_SIZE
+      # với app.menu.image.max-size (service kiểm tra lại).
+      max-file-size: ${MENU_IMAGE_MAX_SIZE:5MB}
+      max-request-size: ${MENU_IMAGE_MAX_REQUEST_SIZE:6MB}
+
+  jackson:
+    time-zone: UTC
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: ${SERVER_PORT:8080}
+  # Chạy sau reverse proxy / TLS (SRS §6.1)
+  forward-headers-strategy: framework
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+  default-produces-media-type: application/json
+
+logging:
+  pattern:
+    # NFR-10: mọi dòng log có correlationId
+    level: "%5p [%X{correlationId:-}]"
+
+app:
+  security:
+    jwt:
+      issuer: ${JWT_ISSUER:qr-order}
+      # Bắt buộc: chuỗi Base64 của khóa HMAC >= 256 bit (32 byte). Không có giá trị mặc định.
+      secret: ${JWT_SECRET}
+      access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
+      refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:P7D}
+    cors:
+      # Danh sách origin, phân tách bằng dấu phẩy (NFR-04: CORS whitelist)
+      allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+  websocket:
+    allowed-origins: ${WS_ALLOWED_ORIGINS:${CORS_ALLOWED_ORIGINS:}}
+    heartbeat-ms: ${WS_HEARTBEAT_MS:10000}
+  menu:
+    image:
+      # Giai đoạn 2: ảnh món JPEG/PNG/WebP, tối đa 5MB (ImageUploadValidator).
+      max-size: ${MENU_IMAGE_MAX_SIZE:5MB}
+  cloudinary:
+    # Lưu ảnh món (SRS §6.1). Thiếu cloud-name/api-key/api-secret: upload ảnh trả 503 IMAGE_STORAGE_NOT_CONFIGURED,
+    # các API khác vẫn chạy. KHÔNG commit api-secret; không bao giờ ghi ra log.
+    cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+    api-key: ${CLOUDINARY_API_KEY:}
+    api-secret: ${CLOUDINARY_API_SECRET:}
+    folder: ${CLOUDINARY_FOLDER:qr-order/products}
+    connect-timeout: ${CLOUDINARY_CONNECT_TIMEOUT:PT5S}
+    read-timeout: ${CLOUDINARY_READ_TIMEOUT:PT30S}
+  bootstrap:
+    # ADMIN đầu tiên (BR-A09): chỉ tạo khi bảng users chưa có bản ghi nào. Thiếu biến thì chỉ cảnh báo và bỏ qua.
+    # Không có giá trị mặc định; không hardcode mật khẩu. Nên xóa INITIAL_ADMIN_PASSWORD sau lần khởi tạo.
+    initial-admin:
+      username: ${INITIAL_ADMIN_USERNAME:}
+      password: ${INITIAL_ADMIN_PASSWORD:}
+      full-name: ${INITIAL_ADMIN_FULL_NAME:}
+  qr:
+    # Giai đoạn 3 (FR-QR-01, BR-S05). URL in trên QR = base-url + path-prefix + qrToken (SRS §3.1: https://{domain}/t/{qrToken}).
+    # base-url là địa chỉ Customer Web, không có dấu "/" cuối. Thiếu base-url hoặc token-secret: API sinh/xoay/in QR trả
+    # 503 QR_NOT_CONFIGURED, join bằng QR đã có vẫn chạy.
+    base-url: ${QR_BASE_URL:}
+    path-prefix: ${QR_PATH_PREFIX:/t/}
+    # Khóa HMAC (Base64, >= 32 byte) để dựng lại qrToken khi in lại; DB chỉ lưu SHA-256 của token. KHÔNG commit, không log.
+    # Đổi khóa: QR đã in vẫn quét được, nhưng không in lại được (409 QR_TOKEN_NOT_REPRODUCIBLE) cho tới khi xoay mã.
+    token-secret: ${QR_TOKEN_SECRET:}
+    image:
+      default-size: ${QR_IMAGE_DEFAULT_SIZE:512}
+      min-size: 128
+      max-size: 2048
+      margin: 2
+    pdf:
+      # Font Unicode nhúng vào PDF (tiếng Việt). Mặc định font Liberation Sans có sẵn trong thư viện OpenPDF 3.x;
+      # có thể trỏ tới file .ttf trên máy (đường dẫn tuyệt đối).
+      font-path: ${QR_PDF_FONT_PATH:font-fallback/LiberationSans-Regular.ttf}
+      qr-size-pt: 300
+      max-tables: 200
+  scheduling:
+    enabled: ${SCHEDULING_ENABLED:true}
+  session:
+    # BR-S07, UC36: chu kỳ quét phiên idle (EXPIRED hoặc needs_attention). Idle timeout đọc từ restaurant_settings.
+    expiry-check-interval-ms: ${SESSION_EXPIRY_CHECK_INTERVAL_MS:60000}
+    expiry-batch-size: ${SESSION_EXPIRY_BATCH_SIZE:200}
+  report:
+    # Giai đoạn 6 (BE-34): khoảng from/to tối đa (ngày) và các ca làm việc để nhóm doanh thu theo ca (groupBy=SHIFT).
+    # Giờ theo múi giờ nghiệp vụ Asia/Ho_Chi_Minh, định dạng HH:mm; ca qua nửa đêm (end <= start) tính vào ngày bắt đầu ca.
+    # Các ca không được chồng lấn nhau; cấu hình sai làm ứng dụng không khởi động.
+    max-range-days: ${REPORT_MAX_RANGE_DAYS:366}
+    shifts:
+      - code: MORNING
+        name: Ca sáng
+        start: "06:00"
+        end: "14:00"
+      - code: EVENING
+        name: Ca chiều tối
+        start: "14:00"
+        end: "23:00"
+      - code: NIGHT
+        name: Ca đêm
+        start: "23:00"
+        end: "06:00"
+  receipt:
+    # Giai đoạn 5a (FR-PAY-12): thông tin nhà hàng in trên phiếu thanh toán nội bộ (DB chưa có bảng thông tin nhà hàng - DB-10).
+    # Phiếu nội bộ, không thay thế hóa đơn điện tử (DEC-11 C).
+    restaurant-name: ${RECEIPT_RESTAURANT_NAME:}
+    address: ${RECEIPT_ADDRESS:}
+    phone: ${RECEIPT_PHONE:}
+    tax-code: ${RECEIPT_TAX_CODE:}
+    footer: ${RECEIPT_FOOTER:Phiếu thanh toán nội bộ - không thay thế hóa đơn điện tử}

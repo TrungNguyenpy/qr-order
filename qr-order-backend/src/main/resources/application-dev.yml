@@ -1,0 +1,29 @@
+# =============================================================================
+# Profile dev: chạy migration + seed dev (V1 -> V2 -> V3). Seed V2 nằm ở location riêng
+# classpath:db/seed-dev và KHÔNG BAO GIỜ được thêm vào profile prod.
+# Lưu ý: database đã từng chạy theo profile prod (V1, V3) thì không chuyển sang dev được
+# (Flyway báo V2 chưa áp dụng); tạo database dev riêng.
+# =============================================================================
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed-dev
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+management:
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.qrorder: DEBUG
+    org.flywaydb: INFO

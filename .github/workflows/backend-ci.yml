@@ -1,0 +1,31 @@
+name: backend-ci
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths: [ "qr-order-backend/**", ".github/workflows/backend-ci.yml" ]
+  pull_request:
+    paths: [ "qr-order-backend/**", ".github/workflows/backend-ci.yml" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: qr-order-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      # Runner ubuntu có sẵn Docker nên Testcontainers (postgres:16-alpine) chạy được.
+      - name: Build + test (unit + integration Testcontainers)
+        run: ./gradlew --no-daemon build
+      - name: Lưu báo cáo test
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: qr-order-backend/build/reports/tests/

@@ -1,0 +1,23 @@
+# Secrets / môi trường
+.env
+*.env.local
+
+# Gradle / build
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+out/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+.DS_Store
+
+# Python (tools/schema-test)
+__pycache__/
+*.pyc
+
+# Logs
+*.log

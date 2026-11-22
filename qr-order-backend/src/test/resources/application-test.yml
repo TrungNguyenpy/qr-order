@@ -1,0 +1,69 @@
+# Profile test: integration test với Testcontainers (postgres:16-alpine).
+# DataSource do @ServiceConnection (TestcontainersConfig) cung cấp, không cần DB_URL.
+# Mặc định chạy đường dev (V1 -> V2 -> V3); ProductionMigrationIT ghi đè locations để chạy đường prod.
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed-dev
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+app:
+  security:
+    jwt:
+      issuer: qr-order-test
+      # Khóa CHỈ DÙNG CHO TEST (Base64 của 43 byte cố định, >= 32 byte), không dùng ở môi trường nào khác.
+      secret: dGVzdC1vbmx5LWp3dC1zZWNyZXQtcXItb3JkZXItMjAyNi0xMS0xOS0hIQ==
+      access-token-ttl: PT15M
+      refresh-token-ttl: P7D
+    cors:
+      allowed-origins: http://localhost:3000
+  websocket:
+    allowed-origins: http://localhost:3000
+  cloudinary:
+    # Cô lập test khỏi CLOUDINARY_* của máy chạy test: integration test dùng InMemoryImageStorageService (@Primary),
+    # không gọi mạng thật.
+    cloud-name: ""
+    api-key: ""
+    api-secret: ""
+  qr:
+    base-url: http://localhost:3000
+    # Khóa CHỈ DÙNG CHO TEST (Base64 của 40 byte cố định).
+    token-secret: dGVzdC1vbmx5LXFyLXRva2VuLXNlY3JldC1xci1vcmRlci0yMDI2IQ==
+  receipt:
+    # GĐ5a: cô lập test khỏi RECEIPT_* của máy chạy test.
+    restaurant-name: "Nhà hàng Test"
+    address: "1 Đường Test"
+    phone: ""
+    tax-code: ""
+  report:
+    # GĐ6: cố định để test báo cáo không phụ thuộc REPORT_MAX_RANGE_DAYS của máy chạy test. Có một ca qua nửa đêm (NIGHT).
+    max-range-days: 366
+    shifts:
+      - code: MORNING
+        name: Ca sáng
+        start: "06:00"
+        end: "14:00"
+      - code: EVENING
+        name: Ca chiều tối
+        start: "14:00"
+        end: "23:00"
+      - code: NIGHT
+        name: Ca đêm
+        start: "23:00"
+        end: "06:00"
+  scheduling:
+    # Integration test gọi trực tiếp SessionExpiryService.runOnce() để kết quả không phụ thuộc thời điểm Scheduler chạy.
+    enabled: false
+  bootstrap:
+    # Cô lập test khỏi biến môi trường INITIAL_ADMIN_* của máy chạy test; InitialAdminRunnerIT tự tạo runner.
+    initial-admin:
+      username: ""
+      password: ""
+      full-name: ""
+
+logging:
+  level:
+    com.qrorder: INFO
+    org.testcontainers: INFO
+    org.flywaydb: INFO
