@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+/* Design tokens: phẳng, tương phản rõ, một màu nhấn duy nhất (phong cách Notion/Stripe/Linear). */
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --color-bg: #ffffff;
+  --color-surface: #f7f7f5;
+  --color-line: #e6e6e3;
+  --color-line-strong: #cfcfca;
+  --color-ink: #191919;
+  --color-ink-2: #55554f;
+  --color-ink-3: #8a8a84;
+
+  --color-accent: #2d4be0;
+  --color-accent-ink: #ffffff;
+  --color-accent-soft: #eef1ff;
+
+  --color-ok: #0f7b53;
+  --color-ok-soft: #e8f5ef;
+  --color-warn: #a35a00;
+  --color-warn-soft: #fdf3e3;
+  --color-danger: #c4271c;
+  --color-danger-soft: #fdecea;
+
+  --radius-ctl: 10px;
+  --radius-card: 12px;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Ẩn thanh cuộn ngang của hàng chip danh mục. */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+@keyframes qo-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.qo-skeleton {
+  background: var(--color-surface);
+  border-radius: 8px;
+  animation: qo-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes qo-sheet-in {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.qo-sheet-in {
+  animation: qo-sheet-in 160ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qo-skeleton, .qo-sheet-in { animation: none; }
+}

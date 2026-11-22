@@ -1,0 +1,57 @@
+name: customer-web-ci
+
+on:
+  push:
+    paths:
+      - "customer-web/**"
+      - ".github/workflows/customer-web-ci.yml"
+  pull_request:
+    paths:
+      - "customer-web/**"
+      - ".github/workflows/customer-web-ci.yml"
+
+# Hủy lượt chạy cũ của cùng nhánh khi có commit mới.
+concurrency:
+  group: customer-web-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: customer-web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: customer-web/package-lock.json
+
+      - name: Cài dependency
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          # Chỉ để build; không phải địa chỉ thật. Giá trị thật cấu hình khi triển khai.
+          NEXT_PUBLIC_API_URL: http://localhost:8080
+          NEXT_PUBLIC_WS_URL: ws://localhost:8080/ws/websocket
+          NEXT_TELEMETRY_DISABLED: "1"
