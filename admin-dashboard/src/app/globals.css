@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+/* Design tokens: phẳng, tương phản rõ, một màu nhấn duy nhất (phong cách Notion / Stripe / Linear). */
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --color-bg: #ffffff;
+  --color-surface: #f7f7f5;
+  --color-surface-2: #efefec;
+  --color-line: #e6e6e3;
+  --color-line-strong: #cfcfca;
+  --color-ink: #191919;
+  --color-ink-2: #55554f;
+  --color-ink-3: #85857f;
+
+  --color-accent: #2d4be0;
+  --color-accent-ink: #ffffff;
+  --color-accent-soft: #eef1ff;
+
+  --color-ok: #0f7b53;
+  --color-ok-soft: #e8f5ef;
+  --color-warn: #a35a00;
+  --color-warn-soft: #fdf3e3;
+  --color-danger: #c4271c;
+  --color-danger-soft: #fdecea;
+
+  --radius-ctl: 8px;
+  --radius-card: 10px;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@keyframes qo-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.qo-skeleton {
+  background: var(--color-surface-2);
+  border-radius: 6px;
+  animation: qo-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes qo-spin {
+  to { transform: rotate(360deg); }
+}
+.qo-spin {
+  animation: qo-spin 0.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qo-skeleton, .qo-spin { animation: none; }
+}
