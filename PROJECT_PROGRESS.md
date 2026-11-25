@@ -517,3 +517,95 @@ Câu hỏi đã được người dùng chốt 21/11/2026 (E1 "Giai đoạn 5"):
 | 23/11/2026 | Admin Dashboard Đợt 1 (frontend) - viết mã, kiểm tra tĩnh | Đã đọc `PROJECT_PROGRESS.md`, README backend, SRS và **đọc mã nguồn backend (clone repo công khai) để lấy đúng DTO/endpoint** (tránh lặp CW-06). Viết `admin-dashboard/` (67 file nguồn): nền tảng API/auth (làm mới token tuần tự, Web Locks, xử lý 409 và 403 xác thực lại), UI dùng chung, đăng nhập + khung, nhân sự + permission, cấu hình, menu (danh mục, món + ảnh, nhóm option), bàn + QR + sơ đồ bàn realtime. Thêm 32 test Vitest và `.github/workflows/admin-dashboard-ci.yml`. Kiểm tra trên bản sao sạch (`npm ci`): `typecheck`, `lint`, `test` 32/32, `build` đều pass; `next start` + `curl` HTTP 200. Gặp và sửa trong lúc làm: lint `react-hooks/refs` (Modal), `set-state-in-effect` (AppShell, STOMP), kiểu trong file test. **Chưa chạy cùng backend thật và chưa mở bằng trình duyệt.** Thêm AD-01..AD-06. Admin Dashboard `IN PROGRESS`. Không đổi `qr-order-backend/`, không đổi schema. AI không commit/push |
 | 23/11/2026 | Admin Dashboard Đợt 2 (frontend) - viết mã, kiểm tra tĩnh | Đồng bộ sửa `Field.tsx` của người dùng. Đọc controller/DTO backend để lấy đúng endpoint và quyền (`deny` thay cho `reject`, ADMIN không đọc Bill/đơn). Viết `/reports` (Recharts, CSV, thông báo thiếu `REPORT_VIEW`), `/sessions` (chi tiết, force-close, mở lại), `/operations` (hủy món, Void/hoàn tiền/Bill thay thế), thêm 14 test. `typecheck`, `lint`, `test` 46/46, `build` đều pass; `next start` + `curl` 200. **Chưa chạy cùng backend thật.** Thêm AD-07..AD-10. Không đổi backend, không đổi schema. AI không commit/push |
 | 23/11/2026 | Admin Dashboard - đóng gói cuối, đánh dấu `COMPLETED` | Người dùng báo đã kiểm thử Đợt 1 + Đợt 2 trên trình duyệt với backend thật, không còn lỗi. AI: xác nhận workflow `admin-dashboard-ci.yml` giống `customer-web-ci.yml` (chỉ khác tên thư mục; `npm ci`, lint, typecheck, test, build; lọc theo `admin-dashboard/**`), rà danh sách file sẽ commit (không có `.env.local`, `node_modules`, `.next`), thêm script `docs/apply_admin_dashboard_completed.py` ghi mục C3. Không đổi mã nguồn ứng dụng, backend hay schema. AI không commit/push |
+
+<!-- STAFF_APP_DOT1:START -->
+## Staff App (Flutter) — Đợt 1: nền tảng, xác thực, sơ đồ bàn
+
+**Trạng thái: `COMPLETED`** — mã nguồn và test đã viết; `flutter analyze` / `flutter test` / chạy thử trên thiết bị CHƯA được xác nhận (xem mục D).
+
+### A. Tổng quan
+- Thư mục: `staff_app/` (Flutter ≥ 3.24, Dart ≥ 3.5, Riverpod + GoRouter + Dio + stomp_dart_client + flutter_secure_storage).
+- Đợt 1: scaffold, lớp mạng + hàng đợi refresh BE-06, STOMP, đăng nhập/khôi phục phiên/đổi mật khẩu/đăng xuất, hiển thị quyền, sơ đồ bàn realtime, chi tiết bàn, xác nhận dọn xong.
+- Đợt 2 (`NOT STARTED`): nhận/xác nhận/từ chối đơn, duyệt hủy món, KDS bếp, thu ngân/thanh toán. Các tab tương ứng đang là màn hình giữ chỗ.
+
+### B. Đã triển khai (`COMPLETED` cho tới khi có kết quả analyze/test)
+- Mạng: `ApiClient` (2 Dio: có/không interceptor), `AuthInterceptor`, `TokenRefreshCoordinator` + `SingleFlight` (N request 401 đồng thời → đúng 1 `POST /api/v1/auth/refresh`; request đến muộn dùng lại token mới; refresh 401 → đăng xuất; lỗi mạng/5xx → giữ phiên; `ACCOUNT_DISABLED` → đăng xuất ngay).
+- Phân tích phong bì `ApiResponse`/`ApiError` → `ApiException` (code, details theo trường, correlationId, Retry-After).
+- Lưu trữ: token trong `flutter_secure_storage`; địa chỉ máy chủ trong `shared_preferences`; `API_BASE_URL` mặc định `http://10.0.2.2:8080` qua `--dart-define`, đổi được ở màn đăng nhập (kèm "Kiểm tra kết nối").
+- STOMP: kết nối `/ws/websocket`, header `Authorization: Bearer`, làm mới token trước khi nối, tự nối lại có backoff, chỉ subscribe kênh theo vai trò; sự kiện chỉ là tín hiệu làm mới, nối lại thì tải lại bằng REST; STOMP mất kết nối → thăm dò 30 giây.
+- UI: đăng nhập, khôi phục phiên, sơ đồ bàn (nhóm khu vực, lọc, tìm không dấu, realtime), chi tiết bàn (PIN, món đã gọi), xác nhận dọn xong (xử lý 409 `CONCURRENT_MODIFICATION`), tài khoản + quyền, đổi mật khẩu; điều hướng theo vai trò; phẳng, tối giản, đủ Loading/Empty/Error/Success.
+- API đã tích hợp: `POST /auth/login|refresh|logout`, `GET /auth/me`, `POST /auth/change-password`, `GET /tables/floor-plan`, `PATCH /tables/{id}/status`, `GET /sessions/{id}`, `GET /orders/sessions/{id}`, STOMP `/topic/tables`.
+- Database: không thay đổi.
+
+### D. Vấn đề / chưa xác nhận
+- Môi trường AI không có Flutter SDK: `flutter analyze`, `flutter test`, build và chạy thiết bị CHƯA chạy. Chỉ đã kiểm tra: `dart format` toàn bộ, `dart analyze` phần Dart thuần, và 43 test Dart thuần (qua bộ chạy thay thế) đều pass. Test Flutter (interceptor Dio, session controller, widget) viết nhưng chưa chạy.
+- Chưa thử với backend thật (đăng nhập, STOMP, 401 refresh).
+
+### E. Quyết định kỹ thuật / khác biệt so với mô tả ban đầu (theo mã nguồn backend)
+- Xác nhận dọn bàn: `PATCH /api/v1/tables/{id}/status` `{status:"AVAILABLE", version}` (không có endpoint `cleaning-complete`).
+- Không có permission `PIN_VIEW`; `tablePin` nằm trong `GET /sessions/{id}` cho STAFF/MANAGER.
+- Từ chối yêu cầu hủy món là `/deny` (dùng ở Đợt 2).
+- ADMIN không có quyền vận hành → bị từ chối ở Staff App (dùng Admin Dashboard). KITCHEN không truy cập `/tables`.
+- Android: cần `INTERNET` và cleartext khi dev (`tools/patch_android.py`).
+
+### F. Việc tiếp theo
+1. Chạy `flutter pub get`, `dart fix --apply`, `flutter analyze`, `flutter test`; sửa lỗi nếu có; thử trên emulator với backend thật.
+2. Khi đã pass và thử thật: đổi trạng thái Đợt 1 thành `COMPLETED`.
+3. Đợt 2: nhận/xác nhận/từ chối đơn, duyệt hủy món, KDS, thu ngân.
+<!-- STAFF_APP_DOT1:END -->
+
+<!-- STAFF_APP_DOT2:START -->
+## Staff App (Flutter) — Đợt 2: đơn hàng, bếp (KDS), thu ngân
+
+**Trạng thái: `COMPLETED`** — mã nguồn và test đã viết; `flutter analyze` / `flutter test` / chạy thiết bị với backend thật CHƯA được xác nhận (xem mục D). Đổi thành `COMPLETED` bằng tay sau khi đã pass.
+
+### B. Đã triển khai
+- Đơn hàng: danh sách đợt chờ xác nhận (`GET /orders/batches/pending`), claim/release/confirm/reject (`POST /orders/batches/{id}/...`, TTL claim ~60s, 409 `BATCH_CLAIMED_BY_OTHER`), từ chối từng món khi xác nhận; món sẵn sàng + `POST /orders/items/{id}/serve`; yêu cầu hủy món `GET /orders/cancel-requests`, `approve`, `deny` (lý do bắt buộc).
+- Bếp: `GET /kitchen/items`, `POST /kitchen/items/{id}/status` (PREPARING|READY), `POST /kitchen/items/{id}/reject`.
+- Thu ngân: `POST/GET /orders/{orderId}/bill` (giảm giá tùy chọn), `POST /bills/{id}/payments` (idempotent bằng `requestId` UUID), `POST /payments/{id}/confirm`, `GET /payments/{id}/receipt`.
+- Hạ tầng: `LiveListController` + `RealtimeReloader` (STOMP + nối lại + thăm dò 30s); `User.has(Permission)` (MANAGER có đủ quyền); router thay 3 màn giữ chỗ.
+- Chi tiết bàn: luôn có dòng Mã PIN bàn ("Chưa có PIN").
+- Database: không thay đổi.
+
+### D. Vấn đề / chưa xác nhận
+- Môi trường AI không có Flutter SDK: `flutter analyze`, `flutter test`, build, chạy thiết bị CHƯA chạy. Chỉ đã kiểm tra: `dart format`, và 51 test Dart thuần (bộ chạy thay thế) pass. Test widget/provider Đợt 2 CHƯA có.
+- Chưa thử với backend thật các luồng Đợt 2.
+
+### E. Quyết định kỹ thuật
+- Mở đợt = tự claim; đóng mà chưa quyết = release.
+- Cổng quyền: sàn = MANAGER/STAFF; bếp = MANAGER/KITCHEN; duyệt hủy = `ITEM_CANCEL_APPROVE`; thu tiền = `PAYMENT_PROCESS`; giảm giá = `BILL_DISCOUNT`.
+- Cố ý chưa làm: void/hoàn tiền/mở lại/hóa đơn thay thế (Manager), khách gọi nhân viên, nhân viên gọi món hộ, sửa số lượng, nhân viên hủy trực tiếp.
+
+### F. Việc tiếp theo
+1. `flutter pub get`, `dart fix --apply`, `flutter analyze`, `flutter test`; sửa lỗi; thử thật với backend.
+2. Viết test widget Đợt 2 nếu cần; sau đó đổi Đợt 2 thành `COMPLETED`.
+<!-- STAFF_APP_DOT2:END -->
+
+<!-- STAFF_APP_DOT3:START -->
+## Staff App (Flutter) — Đợt 3: hỗ trợ, gọi món hộ, sửa món, hóa đơn Manager
+
+**Trạng thái: `COMPLETED`** — mã nguồn và test đã viết; `flutter analyze` / `flutter test` / chạy thiết bị với backend thật CHƯA được xác nhận (xem mục D). Đổi thành `COMPLETED` bằng tay sau khi đã pass.
+
+### B. Đã triển khai
+- Yêu cầu hỗ trợ: `GET /service-calls`, `POST /service-calls/{id}/acknowledge|resolve`, `POST /service-calls` (STAFF gửi `MANAGER_SUPPORT`); tab Hỗ trợ, MANAGER_SUPPORT chỉ Manager thao tác.
+- Gọi món hộ: `GET /categories`, `GET /products` (AVAILABLE, phân trang), `GET /products/{id}`, `GET /option-groups/{id}`, `POST /orders/sessions/{id}/batches` (`clientRequestId` idempotent).
+- Sửa/hủy món: `PATCH /orders/items/{id}/quantity` (kèm `version`), `POST /orders/items/{id}/cancel` (lý do bắt buộc).
+- Hóa đơn Manager: `POST /bills/{id}/void`, `.../void/withdraw`, `POST /orders/{id}/replacement-bill`, `GET /billing/attention`, `POST /bills/{id}/refunds`, `POST /refunds/{id}/confirm`, `GET /bills/{id}/refunds`, `POST /sessions/{id}/reopen`.
+- Test: `dot3_domain_test.dart` (Dart thuần), `dot23_screens_test.dart` (widget Đợt 2/3) và các fake mới trong `test/support/fakes.dart`.
+- Database: không thay đổi.
+
+### D. Vấn đề / chưa xác nhận
+- Môi trường AI không có Flutter SDK: `flutter analyze`, `flutter test`, build, chạy thiết bị CHƯA chạy. Chỉ đã kiểm tra: `dart format`, `dart analyze` phần Dart thuần, và 75 test Dart thuần (bộ chạy thay thế) pass. Test widget (`dot23_screens_test.dart`) viết nhưng chưa chạy.
+- Chưa thử với backend thật các luồng Đợt 3.
+- Yêu cầu từ người dùng còn mở: hiển thị dòng "Phí dịch vụ"/"VAT" trong Hóa đơn tạm tính của Customer Web (mã Customer Web không có trong phiên làm việc này).
+
+### E. Quyết định kỹ thuật
+- Cổng quyền theo backend: Void = `BILL_VOID`; hoàn tiền = `REFUND_RECORD`; mở lại phiên = `PAYMENT_PROCESS` hoặc `SESSION_REOPEN`; hóa đơn thay thế = `BILL_VOID`; MANAGER có đủ quyền mặc định.
+- Hóa đơn VOIDED + order OPEN (sau mở lại phiên) → cho tính tiền mới; VOIDED + order LOCKED → chờ hóa đơn thay thế.
+- Cố ý chưa làm: phiếu hoàn tiền, đóng cưỡng bức phiên, ghi nhận thất thu, báo cáo.
+
+### F. Việc tiếp theo
+1. `flutter pub get`, `dart fix --apply`, `flutter analyze`, `flutter test`; sửa lỗi; thử thật với backend.
+2. Khi đã pass và thử thật: đổi Đợt 3 thành `COMPLETED`.
+3. Việc còn lại của Staff App: phiếu hoàn tiền, đóng cưỡng bức phiên, ghi nhận thất thu; sửa Customer Web (phí dịch vụ).
+<!-- STAFF_APP_DOT3:END -->
