@@ -93,7 +93,8 @@ export default function ServicePage() {
             <dl className="space-y-1 border-t border-line px-3 py-3 text-sm">
               <Row label="Tạm tính" value={formatVnd(bill.data.subtotal)} />
               {bill.data.discount > 0 ? <Row label="Giảm giá" value={`-${formatVnd(bill.data.discount)}`} /> : null}
-              <Row label="Trong đó VAT" value={formatVnd(bill.data.vatAmount)} muted />
+              {bill.data.serviceFeeAmount > 0 ? <Row label="Phí dịch vụ" value={formatVnd(bill.data.serviceFeeAmount)} /> : null}
+              {bill.data.vatAmount > 0 ? <Row label="Thuế VAT (đã gồm trong tổng)" value={formatVnd(bill.data.vatAmount)} muted /> : null}
               <div className="flex justify-between pt-2 text-base font-semibold">
                 <dt>Tổng cộng</dt>
                 <dd className="tabular-nums">{formatVnd(bill.data.total)}</dd>

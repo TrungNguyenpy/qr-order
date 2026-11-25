@@ -252,6 +252,8 @@ export interface BillView {
   lines: BillLine[];
   subtotal: number;
   discount: number;
+  /** Phí dịch vụ (backend: serviceFeeAmount); 0 nếu không thu. */
+  serviceFeeAmount: number;
   vatAmount: number;
   total: number;
   status: string;
@@ -271,6 +273,7 @@ export function toBill(raw: unknown): BillView {
     lines,
     subtotal: num(pick(o, "subtotalAmount", "subtotal", "subTotal")),
     discount: num(pick(o, "discountAmount", "discount")),
+    serviceFeeAmount: num(pick(o, "serviceFeeAmount", "serviceFee", "serviceCharge")),
     vatAmount: num(pick(o, "vatAmount", "tax", "taxAmount")),
     total: num(pick(o, "totalAmount", "total", "grandTotal")),
     status: str(pick(o, "status", "billStatus"), "DRAFT"),
