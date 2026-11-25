@@ -242,7 +242,7 @@ export type BillStatus = "ACTIVE" | "VOID_PENDING" | "VOIDED" | "WRITTEN_OFF";
 export type PaymentStatus = "UNPAID" | "PARTIALLY_PAID" | "PAID";
 export type PaymentMethod = "CASH" | "BANK_TRANSFER" | "CARD_POS" | "OTHER";
 export type TransactionStatus = "PENDING" | "SUCCESS" | "FAILED";
-export type AttentionType = "BILL_VOID_PENDING" | "AWAITING_REPLACEMENT_BILL";
+export type AttentionType = "BILL_VOID_PENDING" | "AWAITING_REPLACEMENT_BILL" | "BILL_AWAITING_PAYMENT";
 
 export interface StaffSessionDto {
   id: number;
@@ -436,6 +436,8 @@ export interface BillingAttentionItem {
   since: string | null;
   remainingRefundable: number | null;
   reason: string | null;
+  /** Còn phải thu; chỉ có với BILL_AWAITING_PAYMENT. */
+  remainingAmount?: number | null;
 }
 
 // ------------------------------------------------------------------------------------------------ Báo cáo (Đợt 2)

@@ -30,7 +30,7 @@ export function OperationsPage() {
   const [tab, setTab] = useState<Tab>("cancel");
   return (
     <div>
-      <PageHeader title="Vận hành" description="Duyệt yêu cầu hủy món và xử lý hóa đơn chờ hoàn tiền / chờ Bill thay thế." />
+      <PageHeader title="Vận hành" description="Duyệt yêu cầu hủy món và xử lý hóa đơn chờ hoàn tiền / chờ Bill thay thế / chờ thu tiền." />
       <Tabs tabs={TABS} value={tab} onChange={setTab} />
       {tab === "cancel" ? <CancelRequestsTab canApprove={hasPermission(user, "ITEM_CANCEL_APPROVE")} isAdmin={user?.role === "ADMIN"} poll={user?.role === "ADMIN"} /> : <BillingTab floor={canReadFloorData(user)} isAdmin={user?.role === "ADMIN"} poll={user?.role === "ADMIN"} />}
     </div>
@@ -136,6 +136,17 @@ function CancelRequestsTab({ canApprove, isAdmin, poll }: { canApprove: boolean;
 
 // ------------------------------------------------------------------------------------------------ Hóa đơn cần xử lý
 
+const TYPE_LABEL: Record<BillingAttentionItem["type"], string> = {
+  BILL_VOID_PENDING: "Bill chờ hoàn tiền",
+  AWAITING_REPLACEMENT_BILL: "Đơn chờ Bill thay thế",
+  BILL_AWAITING_PAYMENT: "Bill chờ thu tiền",
+};
+const TYPE_TONE: Record<BillingAttentionItem["type"], "warn" | "danger"> = {
+  BILL_VOID_PENDING: "warn",
+  AWAITING_REPLACEMENT_BILL: "danger",
+  BILL_AWAITING_PAYMENT: "warn",
+};
+
 function BillingTab({ floor, isAdmin, poll }: { floor: boolean; isAdmin: boolean; poll: boolean }) {
   const query = useBillingAttention(floor, poll);
   const [open, setOpen] = useState<BillingAttentionItem | null>(null);
@@ -152,11 +163,16 @@ function BillingTab({ floor, isAdmin, poll }: { floor: boolean; isAdmin: boolean
     {
       key: "type",
       header: "Loại",
-      cell: (i) =>
-        i.type === "BILL_VOID_PENDING" ? <Badge tone="warn">Bill chờ hoàn tiền</Badge> : <Badge tone="danger">Đơn chờ Bill thay thế</Badge>,
+      cell: (i) => <Badge tone={TYPE_TONE[i.type]}>{TYPE_LABEL[i.type]}</Badge>,
     },
     { key: "bill", header: "Hóa đơn", cell: (i) => i.billNumber ?? "—" },
     { key: "refund", header: "Còn phải hoàn", align: "right", cell: (i) => (i.remainingRefundable === null ? "—" : formatVnd(i.remainingRefundable)) },
+    {
+      key: "collect",
+      header: "Còn phải thu",
+      align: "right",
+      cell: (i) => (i.type === "BILL_AWAITING_PAYMENT" && i.remainingAmount != null ? formatVnd(i.remainingAmount) : "—"),
+    },
     { key: "since", header: "Từ lúc", cell: (i) => formatDateTime(i.since) },
     { key: "why", header: "Lý do", cell: (i) => i.reason ?? "—" },
     {
@@ -176,7 +192,7 @@ function BillingTab({ floor, isAdmin, poll }: { floor: boolean; isAdmin: boolean
 
   return (
     <>
-      <QueryBoundary query={query} isEmpty={(d) => d.length === 0} empty={<EmptyState title="Không có hóa đơn nào cần xử lý" description="Bill chờ hoàn tiền và đơn chờ Bill thay thế sẽ hiện ở đây." />}>
+      <QueryBoundary query={query} isEmpty={(d) => d.length === 0} empty={<EmptyState title="Không có hóa đơn nào cần xử lý" description="Bill chờ hoàn tiền, đơn chờ Bill thay thế và Bill chờ thu tiền (phiên đã đóng) sẽ hiện ở đây." />}>
         {(rows) => <DataTable caption="Hóa đơn cần xử lý" rows={rows} rowKey={(i) => `${i.type}-${i.orderId}-${i.billId ?? 0}`} columns={columns} />}
       </QueryBoundary>
       {open && <BillModal item={open} onClose={() => setOpen(null)} />}
