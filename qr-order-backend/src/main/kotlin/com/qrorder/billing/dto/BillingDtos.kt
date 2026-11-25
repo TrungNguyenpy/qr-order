@@ -397,7 +397,8 @@ data class RefundReceiptResponse(
     val footer: String,
 )
 
-enum class AttentionType { BILL_VOID_PENDING, AWAITING_REPLACEMENT_BILL }
+/** [BILL_AWAITING_PAYMENT]: Bill hiệu lực chưa thu đủ của phiên đã đóng (ví dụ Bill thay thế), cần thu tiền. */
+enum class AttentionType { BILL_VOID_PENDING, AWAITING_REPLACEMENT_BILL, BILL_AWAITING_PAYMENT }
 
 /**
  * Một mục "Cần xử lý" (FR-PAY-13, BR-P17): Bill đang chờ hoàn tiền hoặc Order LOCKED chờ Bill thay thế. Staff chỉ xem
@@ -414,6 +415,8 @@ data class BillingAttentionItem(
     val since: OffsetDateTime?,
     val remainingRefundable: Long?,
     val reason: String?,
+    /** Chỉ có với BILL_AWAITING_PAYMENT: số còn phải thu. */
+    val remainingAmount: Long? = null,
 )
 
 data class ReopenSessionResponse(

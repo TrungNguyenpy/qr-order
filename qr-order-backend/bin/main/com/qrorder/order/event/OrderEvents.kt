@@ -8,7 +8,7 @@ import com.qrorder.order.domain.OrderItemStatus
  */
 
 enum class OrderChangeKind {
-    /** Khách (hoặc Staff) gửi đợt mới. */
+    /** Khách gửi đợt mới, hoặc nhân viên đặt món hộ khách (FR-ORD-05). */
     BATCH_SUBMITTED,
     /** Nhân viên nhận xử lý đợt (claim) hoặc nhả claim. */
     BATCH_CLAIM_CHANGED,
@@ -16,8 +16,10 @@ enum class OrderChangeKind {
     BATCH_DECIDED,
     /** Bếp/Staff đổi trạng thái món (PREPARING, READY, SERVED, từ chối). */
     ITEM_STATUS_CHANGED,
-    /** Khách hủy món PENDING/CONFIRMED. */
+    /** Khách hoặc nhân viên hủy món PENDING/CONFIRMED. */
     ITEM_CANCELLED,
+    /** Nhân viên đổi số lượng món PENDING/CONFIRMED (FR-ORD-05). */
+    ITEM_QUANTITY_CHANGED,
     /** Khách gửi yêu cầu hủy món đang nấu (chờ Manager). */
     CANCEL_REQUESTED,
     /** Manager duyệt/từ chối yêu cầu hủy. */

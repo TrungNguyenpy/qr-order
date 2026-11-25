@@ -2,6 +2,7 @@ package com.qrorder.billing.service
 
 import com.qrorder.billing.domain.Bill
 import com.qrorder.billing.domain.BillStatus
+import com.qrorder.billing.domain.PaymentStatus
 import com.qrorder.billing.domain.TransactionStatus
 import com.qrorder.billing.domain.VoidType
 import com.qrorder.billing.dto.AttentionType
@@ -22,6 +23,7 @@ import com.qrorder.order.domain.Order
 import com.qrorder.order.domain.OrderAttentionReason
 import com.qrorder.order.domain.OrderStatus
 import com.qrorder.order.repository.OrderRepository
+import com.qrorder.table.domain.SessionStatus
 import com.qrorder.table.repository.DiningTableRepository
 import com.qrorder.table.repository.TableSessionRepository
 import org.springframework.context.ApplicationEventPublisher
@@ -161,12 +163,15 @@ class VoidService(
         return VoidResultResponse(mapper.bill(bill, order, LockedSessionView.of(ctx.locked)), false)
     }
 
-    /** FR-PAY-13: Bill VOID_PENDING và Order chờ Bill thay thế, cũ trước. */
+    /** FR-PAY-13: Bill VOID_PENDING, Order chờ Bill thay thế và Bill chưa thu đủ của phiên đã đóng, cũ trước. */
     @Transactional(readOnly = true)
     fun attention(): List<BillingAttentionItem> {
         val pending = billRepository.findAllByStatusOrderByVoidRequestedAtAscIdAsc(BillStatus.VOID_PENDING)
         val awaiting = orderRepository.findAllByNeedsAttentionTrueOrderByAttentionSetAtAscIdAsc()
-        val orders = (orderRepository.findAllById(pending.map { it.orderId }.distinct()) + awaiting).associateBy { it.id }
+        val unpaid = billRepository.findUnpaidInClosedSessions(BillStatus.ACTIVE, PaymentStatus.PAID, SessionStatus.CLOSED)
+        val orders = (
+            orderRepository.findAllById((pending + unpaid).map { it.orderId }.distinct()) + awaiting
+            ).associateBy { it.id }
         val sessions = sessionRepository.findAllById(orders.values.map { it.sessionId }.distinct()).associateBy { it.id }
         val tables = tableRepository.findAllById(sessions.values.map { it.tableId }.distinct()).associateBy { it.id }
         fun tableCode(order: Order?) = order?.let { sessions[it.sessionId] }?.let { tables[it.tableId] }?.code
@@ -188,7 +193,16 @@ class VoidService(
                 billNumber = last?.billNumber, since = o.attentionSetAt, remainingRefundable = null, reason = last?.voidReason,
             )
         }
-        return voidItems + replacementItems
+        val unpaidItems = unpaid.map { b ->
+            val order = orders[b.orderId]
+            BillingAttentionItem(
+                type = AttentionType.BILL_AWAITING_PAYMENT, orderId = b.orderId, sessionId = order?.sessionId ?: 0L,
+                sessionStatus = order?.let { sessions[it.sessionId]?.status }, tableCode = tableCode(order),
+                billId = b.id, billNumber = b.billNumber, since = b.createdAt, remainingRefundable = null, reason = null,
+                remainingAmount = mapper.money(requireNotNull(b.id)).remaining(b.totalAmount),
+            )
+        }
+        return voidItems + replacementItems + unpaidItems
     }
 
     private fun auditVoided(actorUserId: Long, billId: Long, from: BillStatus, reason: String) {

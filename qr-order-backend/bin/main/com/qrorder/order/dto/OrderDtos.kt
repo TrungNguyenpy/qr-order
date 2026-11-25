@@ -14,7 +14,7 @@ import java.time.OffsetDateTime
 import java.util.UUID
 
 /*
- * Hợp đồng API Giai đoạn 4 - Order & Kitchen (Customer Web, Staff App).
+ * Hợp đồng API Giai đoạn 4 - Order & Kitchen (Customer Web, Staff App); Giai đoạn 6 thêm FR-ORD-05 (nhân viên đặt hộ).
  * - Tiền là số nguyên VND (BIGINT), thời điểm ISO-8601, id là số.
  * - Phản hồi dành cho KHÁCH không có thông tin nhân viên (id, tên); phản hồi nhân viên có claimedBy/decidedBy.
  * - reasonCode: UPPER_SNAKE_CASE 2-50 ký tự (CHECK ck_order_item_reason_code, BR-O08).
@@ -117,6 +117,25 @@ data class ApproveCancelRequestRequest(
 /** Manager từ chối yêu cầu hủy: lý do bắt buộc (ck_item_cancel_request_deny_reason). */
 data class DenyCancelRequestRequest(
     @field:NotBlank(message = "Lý do từ chối là bắt buộc")
+    @field:Size(max = 1000, message = "Lý do tối đa 1000 ký tự")
+    val reason: String?,
+)
+
+/**
+ * FR-ORD-05: nhân viên đổi số lượng món PENDING/CONFIRMED. [version] là `version` của món mà client đang thấy
+ * (optimistic locking): lệch -> 409 CONCURRENT_MODIFICATION để client tải lại. Ghi chú món không đổi được (snapshot).
+ */
+data class ChangeItemQuantityRequest(
+    @field:NotNull(message = "Thiếu số lượng")
+    val quantity: Int?,
+
+    @field:NotNull(message = "Thiếu version của món")
+    val version: Long?,
+)
+
+/** FR-ORD-05: nhân viên hủy trực tiếp món PENDING/CONFIRMED; lý do bắt buộc (lưu ở `reason_note`, reasonCode cố định STAFF_CANCELLED). */
+data class StaffCancelItemRequest(
+    @field:NotBlank(message = "Lý do hủy món là bắt buộc")
     @field:Size(max = 1000, message = "Lý do tối đa 1000 ký tự")
     val reason: String?,
 )
@@ -261,4 +280,12 @@ data class CancelRequestResponse(
 data class ItemActionResponse(
     val item: OrderItemResponse,
     val batchStatus: BatchStatus,
+)
+
+/** Kết quả nhân viên đặt món hộ: [replayed] = true khi gửi lại cùng clientRequestId và trả đợt đã tạo trước đó (idempotent). */
+data class StaffPlaceOrderResponse(
+    val replayed: Boolean,
+    val batch: StaffBatchResponse,
+    /** Tổng thành tiền các món tính tiền của Order sau khi đặt (chưa gồm phí phục vụ). */
+    val billableTotal: Long,
 )

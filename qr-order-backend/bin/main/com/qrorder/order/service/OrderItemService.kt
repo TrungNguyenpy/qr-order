@@ -7,7 +7,9 @@ import com.qrorder.common.audit.AuditService
 import com.qrorder.common.domain.RequesterType
 import com.qrorder.common.error.BusinessException
 import com.qrorder.common.error.ErrorCode
+import com.qrorder.common.api.ErrorDetail
 import com.qrorder.common.error.ResourceNotFoundException
+import com.qrorder.common.settings.RestaurantSettingsService
 import com.qrorder.common.time.DbClock
 import com.qrorder.order.domain.BatchStatus
 import com.qrorder.order.domain.CancelRequestStatus
@@ -32,6 +34,10 @@ import org.springframework.transaction.annotation.Transactional
 object OrderAuditActions {
     const val ITEM_CANCEL_APPROVED = "ITEM_CANCEL_APPROVED"
     const val ITEM_CANCEL_DENIED = "ITEM_CANCEL_DENIED"
+    /** GĐ6 - FR-ORD-05: nhân viên đặt món hộ, đổi số lượng, hủy trực tiếp món PENDING/CONFIRMED. */
+    const val ORDER_ITEM_ADDED_BY_STAFF = "ORDER_ITEM_ADDED_BY_STAFF"
+    const val ORDER_ITEM_QUANTITY_CHANGED = "ORDER_ITEM_QUANTITY_CHANGED"
+    const val ORDER_ITEM_CANCELLED_BY_STAFF = "ORDER_ITEM_CANCELLED_BY_STAFF"
     /** Bắt buộc lý do (CHECK ck_audit_log_reason_required). */
     const val ORDER_WRITTEN_OFF = "ORDER_WRITTEN_OFF"
     const val ORDER_VOIDED = "ORDER_VOIDED"
@@ -40,6 +46,8 @@ object OrderAuditActions {
 object OrderAuditEntityTypes {
     const val ORDERS = "orders"
     const val ITEM_CANCEL_REQUEST = "item_cancel_request"
+    const val ORDER_BATCH = "order_batch"
+    const val ORDER_ITEM = "order_item"
 }
 
 /** Lý do chuẩn của hệ thống (UPPER_SNAKE_CASE, BR-O08). */
@@ -48,6 +56,8 @@ object OrderReasonCodes {
     const val CANCEL_APPROVED = "CANCEL_REQUEST_APPROVED"
     const val OUT_OF_STOCK = "OUT_OF_STOCK"
     const val SESSION_FORCE_CLOSED = "SESSION_FORCE_CLOSED"
+    /** GĐ6 - FR-ORD-05: nhân viên hủy trực tiếp món PENDING/CONFIRMED (lý do nằm ở reason_note). */
+    const val STAFF_CANCELLED = "STAFF_CANCELLED"
 }
 
 /**
@@ -59,6 +69,7 @@ object OrderReasonCodes {
 @Service
 class OrderItemService(
     private val locker: SessionOrderLocker,
+    private val settingsService: RestaurantSettingsService,
     private val orderRepository: OrderRepository,
     private val batchRepository: OrderBatchRepository,
     private val itemRepository: OrderItemRepository,
@@ -183,6 +194,95 @@ class OrderItemService(
             OrderRules.event(OrderChangeKind.CANCEL_REQUESTED, ctx.locked, ctx.order, ctx.item.batchId, listOf(ctx.item), staff = true),
         )
         return toResponse(saved, ctx)
+    }
+
+    // =========================================================================================== Nhân viên (FR-ORD-05)
+
+    /**
+     * Nhân viên đổi số lượng món PENDING/CONFIRMED (BR-O05). Kiểm tra theo thứ tự: Order OPEN, trạng thái món, version
+     * (khóa lạc quan do client gửi), khoảng số lượng. Món CONFIRMED đã ở bếp nên báo bếp; thành tiền tính lại ở domain (BE-04).
+     */
+    @Transactional
+    fun staffChangeQuantity(userId: Long, itemId: Long, quantity: Int, version: Long): ItemActionResponse {
+        val ctx = lockItem(itemId)
+        OrderRules.requireOpen(ctx.order)
+        val item = ctx.item
+        val status = item.status
+        if (status != OrderItemStatus.PENDING && status != OrderItemStatus.CONFIRMED) {
+            throw BusinessException(ErrorCode.ORDER_ITEM_NOT_EDITABLE, "Món đang $status, không thể sửa số lượng")
+        }
+        if (item.version != version) throw BusinessException(ErrorCode.CONCURRENT_MODIFICATION)
+        val max = settingsService.current().maxItemQuantity
+        if (quantity < 1 || quantity > max) {
+            throw BusinessException(ErrorCode.VALIDATION_FAILED, details = listOf(ErrorDetail("quantity", "Số lượng phải từ 1 đến $max")))
+        }
+        if (quantity == item.quantity) return ItemActionResponse(mapper.itemResponses(listOf(item)).single(), batchStatusOf(ctx))
+
+        val now = dbClock.now()
+        val oldQuantity = item.quantity
+        val oldLineTotal = item.lineTotal
+        item.changeQuantity(quantity)
+        itemRepository.saveAndFlush(item)
+        ctx.locked.session.lastActivityAt = now
+        locker.save(ctx.locked.session)
+        auditService.record(
+            AuditActor.User(userId),
+            AuditEvent(
+                action = OrderAuditActions.ORDER_ITEM_QUANTITY_CHANGED, entityType = OrderAuditEntityTypes.ORDER_ITEM, entityId = itemId,
+                oldValue = mapOf("quantity" to oldQuantity, "lineTotal" to oldLineTotal),
+                newValue = mapOf("quantity" to item.quantity, "lineTotal" to item.lineTotal, "itemStatus" to status),
+            ),
+        )
+        events.publishEvent(
+            OrderRules.event(
+                OrderChangeKind.ITEM_QUANTITY_CHANGED, ctx.locked, ctx.order, item.batchId, listOf(item),
+                kitchen = status == OrderItemStatus.CONFIRMED, staff = true,
+            ),
+        )
+        notifyProgress(ctx, userId)
+        return ItemActionResponse(mapper.itemResponses(listOf(item)).single(), batchStatusOf(ctx))
+    }
+
+    /**
+     * Nhân viên hủy trực tiếp món PENDING/CONFIRMED kèm lý do (BE-37). Món PREPARING/READY phải qua yêu cầu hủy + Manager
+     * duyệt (BR-O06) nên bị chặn tại đây.
+     */
+    @Transactional
+    fun staffCancel(userId: Long, itemId: Long, reason: String): ItemActionResponse {
+        val ctx = lockItem(itemId)
+        OrderRules.requireOpen(ctx.order)
+        val status = ctx.item.status
+        if (status != OrderItemStatus.PENDING && status != OrderItemStatus.CONFIRMED) {
+            throw BusinessException(
+                ErrorCode.ORDER_ITEM_STATE_INVALID,
+                if (status == OrderItemStatus.PREPARING || status == OrderItemStatus.READY) "Món đã vào chế biến, cần Manager duyệt yêu cầu hủy món (BR-O06)"
+                else "Món đang $status, không thể hủy",
+            )
+        }
+        val cleanReason = reason.trim()
+        val now = dbClock.now()
+        ctx.item.changeStatus(OrderItemStatus.CANCELLED, StatusActor.Staff(userId), now, OrderReasonCodes.STAFF_CANCELLED, cleanReason)
+        itemRepository.saveAndFlush(ctx.item)
+        ctx.locked.session.lastActivityAt = now
+        locker.save(ctx.locked.session)
+        val batchStatus = syncBatch(ctx, now)
+        auditService.record(
+            AuditActor.User(userId),
+            AuditEvent(
+                action = OrderAuditActions.ORDER_ITEM_CANCELLED_BY_STAFF, entityType = OrderAuditEntityTypes.ORDER_ITEM, entityId = itemId,
+                oldValue = mapOf("itemStatus" to status),
+                newValue = mapOf("itemStatus" to OrderItemStatus.CANCELLED, "quantity" to ctx.item.quantity, "lineTotal" to ctx.item.lineTotal),
+                reason = cleanReason,
+            ),
+        )
+        events.publishEvent(
+            OrderRules.event(
+                OrderChangeKind.ITEM_CANCELLED, ctx.locked, ctx.order, ctx.item.batchId, listOf(ctx.item),
+                kitchen = status == OrderItemStatus.CONFIRMED, staff = true,
+            ),
+        )
+        notifyProgress(ctx, userId)
+        return ItemActionResponse(mapper.itemResponses(listOf(ctx.item)).single(), batchStatus)
     }
 
     // =========================================================================================== Manager (ITEM_CANCEL_APPROVE)

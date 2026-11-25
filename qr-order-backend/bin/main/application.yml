@@ -137,6 +137,24 @@ app:
     # BR-S07, UC36: chu kỳ quét phiên idle (EXPIRED hoặc needs_attention). Idle timeout đọc từ restaurant_settings.
     expiry-check-interval-ms: ${SESSION_EXPIRY_CHECK_INTERVAL_MS:60000}
     expiry-batch-size: ${SESSION_EXPIRY_BATCH_SIZE:200}
+  report:
+    # Giai đoạn 6 (BE-34): khoảng from/to tối đa (ngày) và các ca làm việc để nhóm doanh thu theo ca (groupBy=SHIFT).
+    # Giờ theo múi giờ nghiệp vụ Asia/Ho_Chi_Minh, định dạng HH:mm; ca qua nửa đêm (end <= start) tính vào ngày bắt đầu ca.
+    # Các ca không được chồng lấn nhau; cấu hình sai làm ứng dụng không khởi động.
+    max-range-days: ${REPORT_MAX_RANGE_DAYS:366}
+    shifts:
+      - code: MORNING
+        name: Ca sáng
+        start: "06:00"
+        end: "14:00"
+      - code: EVENING
+        name: Ca chiều tối
+        start: "14:00"
+        end: "23:00"
+      - code: NIGHT
+        name: Ca đêm
+        start: "23:00"
+        end: "06:00"
   receipt:
     # Giai đoạn 5a (FR-PAY-12): thông tin nhà hàng in trên phiếu thanh toán nội bộ (DB chưa có bảng thông tin nhà hàng - DB-10).
     # Phiếu nội bộ, không thay thế hóa đơn điện tử (DEC-11 C).

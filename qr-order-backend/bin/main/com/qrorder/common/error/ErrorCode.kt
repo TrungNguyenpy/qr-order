@@ -148,6 +148,12 @@ enum class ErrorCode(
     /** BR-O11: còn đợt PENDING thì không tạo Bill (SRS §6.8: 409). */
     BATCH_PENDING(HttpStatus.CONFLICT, "Còn đợt order chờ xác nhận, cần xử lý trước khi tính tiền"),
 
+    // ---------------------------------------------------------------- Báo cáo (Giai đoạn 6)
+    /** BE-34: from/to sai định dạng, thiếu một đầu, from >= to hoặc vượt app.report.max-range-days. */
+    INVALID_REPORT_RANGE(HttpStatus.BAD_REQUEST, "Khoảng thời gian báo cáo không hợp lệ"),
+    /** BE-34: groupBy=SHIFT khi chưa cấu hình ca (app.report.shifts) hoặc mã ca không tồn tại. */
+    REPORT_SHIFT_NOT_CONFIGURED(HttpStatus.UNPROCESSABLE_ENTITY, "Chưa cấu hình ca làm việc hoặc mã ca không tồn tại"),
+
     // ---------------------------------------------------------------- Vi phạm unique có tên (DB_CONSTRAINT)
     USERNAME_TAKEN(HttpStatus.CONFLICT, "Tên đăng nhập đã tồn tại", Source.DB_CONSTRAINT),
     CATEGORY_NAME_TAKEN(HttpStatus.CONFLICT, "Tên danh mục đã tồn tại", Source.DB_CONSTRAINT),

@@ -2,12 +2,14 @@ package com.qrorder.billing.repository
 
 import com.qrorder.billing.domain.Bill
 import com.qrorder.billing.domain.BillStatus
+import com.qrorder.billing.domain.PaymentStatus
 import com.qrorder.billing.domain.PaymentTransaction
 import com.qrorder.billing.domain.RefundTransaction
 import com.qrorder.billing.domain.TransactionStatusHistory
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import com.qrorder.table.domain.SessionStatus
 import java.util.UUID
 
 interface BillRepository : JpaRepository<Bill, Long> {
@@ -22,6 +24,21 @@ interface BillRepository : JpaRepository<Bill, Long> {
 
     /** Danh sách "Cần xử lý" (ix_bill_void_pending): Bill đang chờ hoàn tiền, cũ trước. */
     fun findAllByStatusOrderByVoidRequestedAtAscIdAsc(status: BillStatus): List<Bill>
+
+    /**
+     * Bill hiệu lực chưa thu đủ của phiên đã đóng (ví dụ Bill thay thế sau Void): bàn không còn phiên mở nên không hiện
+     * ở danh sách bàn của thu ngân. Cũ trước.
+     */
+    @Query(
+        "select b from Bill b where b.status = :billStatus and b.paymentStatus <> :paid " +
+            "and b.orderId in (select o.id from Orders o where o.sessionId in " +
+            "(select s.id from TableSession s where s.status = :sessionStatus)) order by b.id asc",
+    )
+    fun findUnpaidInClosedSessions(
+        @Param("billStatus") billStatus: BillStatus,
+        @Param("paid") paid: PaymentStatus,
+        @Param("sessionStatus") sessionStatus: SessionStatus,
+    ): List<Bill>
 }
 
 interface PaymentTransactionRepository : JpaRepository<PaymentTransaction, Long> {

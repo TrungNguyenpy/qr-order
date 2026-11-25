@@ -7,6 +7,9 @@ import com.qrorder.common.error.BusinessException
 import com.qrorder.common.error.ErrorCode
 import com.qrorder.order.domain.OrderItemStatus
 import com.qrorder.order.dto.ApproveCancelRequestRequest
+import com.qrorder.order.dto.ChangeItemQuantityRequest
+import com.qrorder.order.dto.StaffCancelItemRequest
+import com.qrorder.order.dto.StaffPlaceOrderResponse
 import com.qrorder.order.dto.CancelRequestResponse
 import com.qrorder.order.dto.ChangeItemStatusRequest
 import com.qrorder.order.dto.ConfirmBatchRequest
@@ -25,6 +28,7 @@ import com.qrorder.order.service.OrderBatchService
 import com.qrorder.order.service.OrderItemService
 import com.qrorder.order.service.OrderPlacementService
 import com.qrorder.order.service.OrderQueryService
+import com.qrorder.order.service.StaffOrderService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
@@ -32,6 +36,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -98,6 +103,7 @@ class GuestOrderController(
 class StaffOrderController(
     private val batches: OrderBatchService,
     private val items: OrderItemService,
+    private val staffOrders: StaffOrderService,
     private val query: OrderQueryService,
 ) {
     @Operation(summary = "Đợt chờ xác nhận (cũ trước, kèm người đang giữ claim)")
@@ -139,6 +145,26 @@ class StaffOrderController(
         val staff = CurrentPrincipal.requireStaff()
         return ApiResponse.ok(batches.reject(staff.userId, staff.role, id, request))
     }
+
+    @Operation(summary = "FR-ORD-05: nhân viên đặt món hộ khách (đợt tự CONFIRMED, không rate limit/PIN; 201 mới, 200 nếu lặp clientRequestId)")
+    @PostMapping("/sessions/{sessionId}/batches")
+    @PreAuthorize(OrderAccess.FLOOR)
+    fun placeForGuest(@PathVariable sessionId: Long, @Valid @RequestBody request: PlaceOrderRequest): ResponseEntity<ApiResponse<StaffPlaceOrderResponse>> {
+        val result = staffOrders.place(CurrentPrincipal.requireStaff().userId, sessionId, request)
+        return ResponseEntity.status(if (result.replayed) HttpStatus.OK else HttpStatus.CREATED).body(ApiResponse.ok(result))
+    }
+
+    @Operation(summary = "FR-ORD-05: đổi số lượng món PENDING/CONFIRMED (khóa lạc quan theo version)")
+    @PatchMapping("/items/{itemId}/quantity")
+    @PreAuthorize(OrderAccess.FLOOR)
+    fun changeQuantity(@PathVariable itemId: Long, @Valid @RequestBody request: ChangeItemQuantityRequest): ApiResponse<ItemActionResponse> =
+        ApiResponse.ok(items.staffChangeQuantity(CurrentPrincipal.requireStaff().userId, itemId, requireNotNull(request.quantity), requireNotNull(request.version)))
+
+    @Operation(summary = "FR-ORD-05: nhân viên hủy trực tiếp món PENDING/CONFIRMED kèm lý do (PREPARING/READY phải qua Manager duyệt)")
+    @PostMapping("/items/{itemId}/cancel")
+    @PreAuthorize(OrderAccess.FLOOR)
+    fun cancelItem(@PathVariable itemId: Long, @Valid @RequestBody request: StaffCancelItemRequest): ApiResponse<ItemActionResponse> =
+        ApiResponse.ok(items.staffCancel(CurrentPrincipal.requireStaff().userId, itemId, requireNotNull(request.reason)))
 
     @Operation(summary = "Món READY chờ mang ra bàn (cũ trước)")
     @GetMapping("/items/ready")

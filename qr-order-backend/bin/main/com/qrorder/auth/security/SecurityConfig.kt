@@ -69,7 +69,7 @@ class SecurityConfig {
             allowedOrigins = corsProperties.allowedOrigins.map { it.trim() }.filter { it.isNotEmpty() }
             allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
             allowedHeaders = listOf("Authorization", "Content-Type", "Accept", "X-Correlation-Id")
-            exposedHeaders = listOf("X-Correlation-Id")
+            exposedHeaders = listOf("X-Correlation-Id", "Content-Disposition")
             allowCredentials = false
             maxAge = 3600
         }
