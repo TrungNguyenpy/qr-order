@@ -8,7 +8,7 @@ Backend API của hệ thống QR Order: Kotlin 1.9.25, Spring Boot 3.5.16, Java
 # Từ thư mục gốc repository
 cp .env.example .env                    # điền DB_PASSWORD, JWT_SECRET, QR_TOKEN_SECRET (openssl rand -base64 48), QR_BASE_URL và INITIAL_ADMIN_*
 docker compose up -d --build            # postgres:16-alpine + backend (profile dev)
-curl http://localhost:8080/actuator/health
+curl http://localhost:8081/actuator/health
 # Swagger UI (profile dev): http://localhost:8080/swagger-ui.html
 ```
 

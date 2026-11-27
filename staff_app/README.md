@@ -2,7 +2,7 @@
 
 Ứng dụng nhân viên (Android điện thoại/máy tính bảng) của hệ thống QR Order: phục vụ, thu ngân, bếp.
 
-**Trạng thái: Đợt 1 — `IN PROGRESS`.** Đợt 1 gồm nền tảng, xác thực và sơ đồ bàn. Nhận/xác nhận/từ chối đơn, KDS bếp và thu ngân thuộc Đợt 2 (các tab tương ứng đang là màn hình giữ chỗ).
+**Trạng thái: Đợt 1 — `COMPELETE`.** Đợt 1 gồm nền tảng, xác thực và sơ đồ bàn. Nhận/xác nhận/từ chối đơn, KDS bếp và thu ngân thuộc Đợt 2 (các tab tương ứng đang là màn hình giữ chỗ).
 
 ## Đợt 1 có gì
 

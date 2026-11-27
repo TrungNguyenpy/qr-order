@@ -9,8 +9,8 @@
 > - Chỉ ghi nhận điều đã thực sự làm. Không đánh `COMPLETED` khi chưa xong và chưa kiểm tra. Không ghi nhận source code chưa tồn tại. Không ghi phần trăm tiến độ khi chưa có căn cứ đo.
 > - Không xóa lịch sử cũ: chỉ cập nhật trạng thái hoặc bổ sung, và ghi vào mục G.
 
-**Cập nhật lần cuối:** 23/11/2026
-**Phiên:** Customer Web (Next.js) chạy cùng backend thật (docker compose, cổng 8081): sửa 5 lỗi phát hiện khi chạy thật, người dùng báo kiểm thử E2E thủ công **3/3 luồng chính đạt** (realtime xác nhận đơn/bếp, hủy món và yêu cầu hủy, yêu cầu thanh toán + hóa đơn tạm tính) → Customer Web vẫn `IN PROGRESS` (chưa có test tự động/CI, chưa kiểm các nhánh lỗi: PIN, hết hạn JWT, `SESSION_CLOSED`, 429; mục C0). Trước đó cùng ngày: Nghiệm thu Giai đoạn 6 - Report & Analytics + FR-ORD-05: build thật 476/476 PASS (người dùng, 22/11/2026) → `COMPLETED`; người dùng xác nhận BE-34 - BE-38, ghi nhận BE-39, BE-40. **Toàn bộ 12 module backend đã có API và `COMPLETED`**. Chi tiết GĐ6: `docs/PROGRESS_ARCHIVE.md` B16, E11
+**Cập nhật lần cuối:** 27/11/2026
+**Phiên:** **CHỐT SỔ DỰ ÁN (27/11/2026)** - người dùng báo kiểm thử thật các nhánh biên còn mở của Customer Web (PIN bàn, `cancel-requests` + Manager duyệt, `SESSION_CLOSED`, VietQR động quét bằng điện thoại thật qua LAN) và 3/3 workflow GitHub Actions xanh → Customer Web, VietQR và toàn dự án `COMPLETED`; viết lại `README.md` gốc làm trang giới thiệu. Các phiên cũ (giữ lịch sử): Customer Web (Next.js) chạy cùng backend thật (docker compose, cổng 8081): sửa 5 lỗi phát hiện khi chạy thật, người dùng báo kiểm thử E2E thủ công **3/3 luồng chính đạt** (realtime xác nhận đơn/bếp, hủy món và yêu cầu hủy, yêu cầu thanh toán + hóa đơn tạm tính) → Customer Web vẫn `IN PROGRESS` (chưa có test tự động/CI, chưa kiểm các nhánh lỗi: PIN, hết hạn JWT, `SESSION_CLOSED`, 429; mục C0). Trước đó cùng ngày: Nghiệm thu Giai đoạn 6 - Report & Analytics + FR-ORD-05: build thật 476/476 PASS (người dùng, 22/11/2026) → `COMPLETED`; người dùng xác nhận BE-34 - BE-38, ghi nhận BE-39, BE-40. **Toàn bộ 12 module backend đã có API và `COMPLETED`**. Chi tiết GĐ6: `docs/PROGRESS_ARCHIVE.md` B16, E11
 
 **Phiên (23/11/2026) - Admin Dashboard Đợt 1:** AI viết mã `admin-dashboard/` (đăng nhập + làm mới token tuần tự, nhân sự/permission, cấu hình nhà hàng, menu, bàn/QR). Trên bản sao sạch `npm ci`: `typecheck`, `lint`, `test` (32/32), `build` đều pass; `next start` trả 200 cho mọi route. **Chưa chạy cùng backend thật, chưa mở bằng trình duyệt** nên Admin Dashboard giữ `IN PROGRESS` (mục C1, AD-01..AD-06). AI không commit/push.
 
@@ -28,6 +28,7 @@
 | Admin Dashboard | **`IN PROGRESS`** (23/11/2026, thay cho nhãn `NOT STARTED` ở các dòng trên). `admin-dashboard/` cùng cấp `qr-order-backend/` và `customer-web/`: Next.js 16, React 19, TypeScript strict, Tailwind v4, Axios, TanStack Query v5, Zustand v5, `@stomp/stompjs`, Vitest. **Đợt 1 đã có mã**: đăng nhập, nhân sự + permission, cấu hình, menu, bàn + QR. Đợt 2 (giám sát phiên/đơn, duyệt hủy món, báo cáo) chưa làm. Chi tiết mục C1 |
 | Admin Dashboard Đợt 2 | **`IN PROGRESS`** (23/11/2026). Đã có mã: `/reports` (KPI, biểu đồ doanh thu, top món, thời gian phục vụ, CSV), `/sessions` (danh sách phiên, chi tiết, force-close, mở lại), `/operations` (duyệt/từ chối hủy món, hóa đơn cần xử lý: Void, rút Void, hoàn tiền, Bill thay thế). **Chưa chạy với backend thật.** Đợt 1: người dùng báo đã kiểm thử đủ nhóm A-E với backend thật (23/11/2026), khớp hợp đồng API. Chi tiết mục C2 |
 | Admin Dashboard (Đợt 1 + Đợt 2) | **`COMPLETED`** (23/11/2026, thay thế nhãn `IN PROGRESS` ở các dòng Admin Dashboard phía trên). Người dùng đã kiểm thử trên trình duyệt với backend thật: toàn bộ Đợt 1 (nhóm A-E) và Đợt 2 (`/reports`, `/sessions`, `/operations`), mọi luồng chạy đúng, khớp hợp đồng API, không còn lỗi. Chi tiết mục C3 |
+| **Trạng thái chung toàn dự án (27/11/2026)** | **`COMPLETED`** (thay thế các nhãn `IN PROGRESS` ở các dòng phía trên). Backend GĐ0 - GĐ6, Admin Dashboard, Customer Web (C0), Staff App (Đợt 1 - 4) và VietQR đều `COMPLETED`. **Căn cứ (người dùng báo bằng chữ, AI chưa tự quan sát được giao diện/thiết bị):** (1) kiểm thử thật Customer Web: nhập PIN bàn, yêu cầu hủy món đang chế biến (`cancel-requests`) + Manager duyệt, phiên tự khóa/đóng `SESSION_CLOSED`, VietQR động quét thử trên điện thoại thật qua LAN; (2) cả 3 workflow `backend-ci`, `admin-dashboard-ci`, `customer-web-ci` xanh trên GitHub. Chi tiết: C0, khối VietQR, mục G (dòng 27/11/2026) |
 | % hoàn thành | Chưa tính (chưa có căn cứ đo) |
 
 ### Công nghệ (stack đã thống nhất)
@@ -76,7 +77,7 @@ Trạng thái triển khai (service/API): Authentication & Authorization, User M
 
 ## C. Công việc đang thực hiện
 
-### C0. Customer Web (Frontend) - `IN PROGRESS` (22/11/2026)
+### C0. Customer Web (Frontend) - `COMPLETED` (27/11/2026; trước đó `IN PROGRESS` từ 22/11/2026)
 
 **Vị trí:** `customer-web/` (cùng cấp `qr-order-backend/`). Môi trường làm việc của AI không clone được repo GitHub (chưa liên kết tài khoản GitHub) nên mã được viết ở bản cục bộ và giao cho người dùng qua file zip; **AI không commit/push** (người dùng giải nén và commit).
 
@@ -102,18 +103,20 @@ Trạng thái triển khai (service/API): Authentication & Authorization, User M
 | E2E thủ công luồng 1: MANAGER (Swagger) claim + confirm đợt → bếp PREPARING → READY; web tự cập nhật realtime không tải lại | Đạt (người dùng báo) | Người dùng, **AI chỉ có báo cáo bằng chữ** |
 | E2E thủ công luồng 2: hủy món CONFIRMED thành công; món PREPARING/READY đổi thành nút "Yêu cầu hủy"; đợt 2 tự CONFIRMED sau khi phiên đã xác minh | Đạt (người dùng báo); **việc gửi yêu cầu hủy món đang nấu và Manager duyệt chưa được báo cáo rõ** | Người dùng, AI chỉ có báo cáo bằng chữ |
 | E2E thủ công luồng 3: khách yêu cầu thanh toán; MANAGER `POST /orders/{id}/bill` (giảm giá 10%) → 201; web hiện banner "Bàn đang chờ thanh toán", khóa nút gọi món/thanh toán, hiển thị hóa đơn tạm tính | Đạt (người dùng báo); có ảnh: giảm giá -10.300đ, VAT 6.867đ, tổng 92.700đ; lỗi "Tạm tính 0đ" đã phát hiện và sửa (CW-06) | Người dùng, có ảnh chụp màn hình (sau sửa lỗi) |
-| Test tự động (Vitest + jsdom) | **61/61 PASS** (3 file: `client.test.ts` gia hạn JWT tuần tự/re-join/SESSION_CLOSED/chuẩn hóa lỗi; `types.test.ts` normalizer DTO join/menu/đơn/bill/service-call; `cart.test.ts` gộp dòng, giới hạn số lượng, `clientRequestId`). Chạy lại 26/11/2026 trên bản sao sạch (`npm ci`) | AI chạy |
+| Test tự động (Vitest + jsdom) | **66/66 PASS** (người dùng chạy 27/11/2026; 61/61 trước khi thêm test VietQR). Chi tiết bản 61/61: (3 file: `client.test.ts` gia hạn JWT tuần tự/re-join/SESSION_CLOSED/chuẩn hóa lỗi; `types.test.ts` normalizer DTO join/menu/đơn/bill/service-call; `cart.test.ts` gộp dòng, giới hạn số lượng, `clientRequestId`). Chạy lại 26/11/2026 trên bản sao sạch (`npm ci`) | AI chạy |
 | CI cho `customer-web` (`.github/workflows/customer-web-ci.yml`: `npm ci`, lint, typecheck, test, build; lọc theo `customer-web/**`) | Các bước tương ứng đã chạy PASS cục bộ (lint 0 lỗi, typecheck 0 lỗi, test 61/61, `next build` 7 route). **Chưa quan sát lượt chạy trên GitHub Actions** | AI chạy cục bộ; cần người dùng xác nhận trên GitHub |
 
-**Chưa kiểm chứng với backend thật (còn thiếu trước khi đánh `COMPLETED`):**
+**Nghiệm thu C0 (27/11/2026, người dùng báo):** kiểm thử thật các nhánh biên (mục 1, 3, 5, 7 bên dưới) đều đạt; CI `customer-web-ci` xanh. Mục 2 và 4 người dùng **không báo riêng từng nhánh**: ghi nhận là chỉ được phủ bởi test tự động (`client.test.ts`, `cart.test.ts`, `types.test.ts`), chưa có xác nhận thủ công riêng với backend thật; không chặn `COMPLETED` vì luồng chính và các nhánh biên quan trọng đã đạt. Danh sách dưới đây giữ nguyên làm lịch sử (nhãn "Chưa kiểm chứng" là tại thời điểm 22/11/2026):
 
-1. Nhánh PIN bàn (`require_table_pin`): màn nhập PIN, `verify-pin`, `TABLE_PIN_INVALID`, `TABLE_PIN_REQUIRED`.
+**Chưa kiểm chứng với backend thật (tại 22/11/2026; cập nhật kết quả ở cuối mỗi mục):**
+
+1. Nhánh PIN bàn (`require_table_pin`): màn nhập PIN, `verify-pin`, `TABLE_PIN_INVALID`, `TABLE_PIN_REQUIRED`. **→ Đạt (người dùng báo 27/11/2026).**
 2. Hết hạn Guest JWT: gia hạn chủ động (`POST /guest/session/token`) và re-join khi hết hạn hẳn (BE-06, tuần tự một luồng).
-3. `401 SESSION_CLOSED` (phiên đóng) → màn kết thúc phiên; sự kiện `SESSION_CHANGED` CLOSED/REOPENED; `429` + `Retry-After`; mất mạng rồi kết nối lại (reconnect + resync).
+3. `401 SESSION_CLOSED` (phiên đóng) → màn kết thúc phiên; sự kiện `SESSION_CHANGED` CLOSED/REOPENED; `429` + `Retry-After`; mất mạng rồi kết nối lại (reconnect + resync). **→ Phần `SESSION_CLOSED`/đóng phiên: đạt (người dùng báo 27/11/2026). `429` và reconnect không được báo riêng: chỉ có test tự động.**
 4. Gửi lặp cùng `clientRequestId` (replay 200), `MAX_PENDING_BATCHES_REACHED`, `PRODUCT_NOT_AVAILABLE` (món vừa hết sau khi đã vào giỏ), `/topic/menu` (đổi SOLD_OUT tức thời).
-5. Gửi yêu cầu hủy món đang nấu (`cancel-requests`) và phản ứng khi Manager duyệt/từ chối; hủy khi Order LOCKED.
-6. ~~Test tự động và CI~~ — đã có (xem bảng kết quả); còn chờ xác nhận lượt chạy CI đầu tiên trên GitHub. Chưa có component test (Testing Library) cho màn hình; test gia hạn token chạy ở mức `client.ts` với mock HTTP, chưa phải backend thật.
-7. Kiểm tra trên điện thoại thật qua mạng LAN (cần thêm origin `http://<IP-máy>:3000` vào `CORS_ALLOWED_ORIGINS` và `WS_ALLOWED_ORIGINS`).
+5. Gửi yêu cầu hủy món đang nấu (`cancel-requests`) và phản ứng khi Manager duyệt/từ chối; hủy khi Order LOCKED. **→ `cancel-requests` + Manager duyệt: đạt (người dùng báo 27/11/2026).**
+6. ~~Test tự động và CI~~ — đã có (xem bảng kết quả); CI trên GitHub đã xanh (người dùng báo 27/11/2026). Chưa có component test (Testing Library) cho màn hình; test gia hạn token chạy ở mức `client.ts` với mock HTTP, chưa phải backend thật.
+7. Kiểm tra trên điện thoại thật qua mạng LAN (cần thêm origin `http://<IP-máy>:3000` vào `CORS_ALLOWED_ORIGINS` và `WS_ALLOWED_ORIGINS`). **→ Đạt, kèm quét VietQR động bằng điện thoại thật (người dùng báo 27/11/2026).**
 
 ---
 
@@ -365,6 +368,8 @@ Từ yêu cầu ban đầu: stack công nghệ, 12 module, actors (Customer, Sta
 
 ### F1. Bước tiếp theo
 
+**Cập nhật 27/11/2026 - dự án đã chốt `COMPLETED`.** Các đoạn bên dưới là lịch sử các bước đã làm. Việc tiếp theo (tùy chọn, không chặn): hardening (GĐ8: rate limit phân tán, giám sát, sao lưu), xem trước QR ở Admin, đối soát chuyển khoản tự động, cập nhật `staff_app/README.md`, component test (Testing Library) cho Customer Web/Admin.
+
 **Admin Dashboard (Đợt 1 + Đợt 2): `COMPLETED` (23/11/2026, mục C3).** Việc còn lại của người dùng: `git add` + `commit` + `push` thư mục `admin-dashboard/`, `.github/workflows/admin-dashboard-ci.yml` và các script trong `docs/` (có thể xóa 3 script `docs/apply_admin_dashboard_*.py` sau khi đã áp dụng), rồi xem `admin-dashboard-ci` xanh trên GitHub. Bước lớn tiếp theo của dự án: Staff App (Flutter) hoặc phần còn lại chưa làm trong mục F.
 
 **Admin Dashboard Đợt 2 (23/11/2026): `IN PROGRESS`, đã có mã, chờ kiểm thử cùng backend thật (mục C2).** Việc người dùng cần làm: giải nén zip, `npm ci && npm run dev`, thử `/reports` (đủ cả ADMIN chưa có `REPORT_VIEW` và MANAGER), `/sessions`, `/operations` theo các luồng ở C2, báo lỗi/ảnh chụp màn hình; chạy `python docs/apply_admin_dashboard_progress_dot2.py` nếu `PROJECT_PROGRESS.md` trong repo chưa có mục C2; commit/push. Khi đạt thì AI cập nhật `COMPLETED`.
@@ -521,10 +526,12 @@ Câu hỏi đã được người dùng chốt 21/11/2026 (E1 "Giai đoạn 5"):
 | 26/11/2026 | Customer Web - test tự động và CI (đối chiếu hiện trạng) | Đọc mã: `customer-web/` đã có Vitest, 3 file test và `customer-web-ci.yml` (đã commit) nhưng mục C0 còn ghi "CHƯA CÓ". Chạy trên bản sao sạch: `npm ci`, `lint`, `typecheck` 0 lỗi, `test` 61/61, `build` PASS. Cập nhật C0. Không đổi mã nguồn, backend hay schema. Customer Web vẫn `IN PROGRESS` (còn các mục 1-5, 7 chưa kiểm với backend thật). Chưa xác nhận CI trên GitHub |
 | 26/11/2026 | VietQR - chuyển khoản, thu ngân xác nhận tay (Backend V4 + Admin + Customer Web + Staff App) | Người dùng chốt: tài khoản nhận tiền lưu ở `restaurant_settings` (V4, Admin cập nhật có `version` + audit); QR hiển thị ở Customer Web (hóa đơn tạm tính) và Staff App (hộp thoại Thu tiền, chọn Chuyển khoản). Viết mã theo mục "VietQR" bên dưới. **Đã chạy được:** V4 trên PostgreSQL 16 (bộ schema 191/191, 10 case V4 mới); Admin: lint/typecheck/52 test/build; Customer Web: lint/typecheck/66 test/build. **Chưa chạy được:** biên dịch Kotlin, Gradle (unit + IT), `flutter analyze`/`flutter test` (sandbox chặn tải Gradle/Maven và không có Flutter SDK). Trạng thái `IN PROGRESS` chờ người dùng chạy. Không sửa V1-V3 |
 
+| 27/11/2026 | **Nghiệm thu cuối - chốt sổ dự án** | Người dùng báo (AI chỉ có báo cáo bằng chữ): kiểm thử thật thành công các nhánh biên còn mở của Customer Web (nhập PIN bàn; `cancel-requests` món đang chế biến + Manager duyệt; tự khóa/đóng phiên `SESSION_CLOSED`; hiển thị và quét VietQR động bằng điện thoại thật qua mạng LAN) và cả 3 workflow GitHub Actions (`backend-ci`, `admin-dashboard-ci`, `customer-web-ci`) xanh. Kết quả: Customer Web (C0), VietQR và toàn dự án chuyển `COMPLETED`. Chưa báo riêng và chỉ phủ bởi test tự động: hết hạn/gia hạn JWT, replay `clientRequestId`, `MAX_PENDING_BATCHES_REACHED`, `PRODUCT_NOT_AVAILABLE`, `/topic/menu`, `429`, reconnect. Viết lại `README.md` gốc làm trang giới thiệu (bản README backend chi tiết vẫn ở `qr-order-backend/README.md`). Không đổi mã nguồn. Còn lại ngoài phạm vi: hardening GĐ8, xem trước QR ở Admin, đối soát chuyển khoản tự động, README `staff_app/` cần cập nhật (còn ghi Đợt 1 `IN PROGRESS`) |
+
 <!-- STAFF_APP_DOT1:START -->
 ## Staff App (Flutter) — Đợt 1: nền tảng, xác thực, sơ đồ bàn
 
-**Trạng thái: `COMPLETED`** — mã nguồn và test đã viết; `flutter analyze` / `flutter test` / chạy thử trên thiết bị CHƯA được xác nhận (xem mục D).
+**Trạng thái: `COMPLETED`** — (ghi chú 27/11/2026: dòng "CHƯA được xác nhận" dưới đây là nội dung lịch sử; các đợt tiếp theo trên cùng mã nguồn Staff App đã được người dùng chạy `flutter analyze`/`flutter test`/tablet thật và báo đạt ở Đợt 4, nên bao hàm Đợt 1) mã nguồn và test đã viết; `flutter analyze` / `flutter test` / chạy thử trên thiết bị CHƯA được xác nhận (xem mục D) tại thời điểm viết.
 
 ### A. Tổng quan
 - Thư mục: `staff_app/` (Flutter ≥ 3.24, Dart ≥ 3.5, Riverpod + GoRouter + Dio + stomp_dart_client + flutter_secure_storage).
@@ -646,7 +653,7 @@ Câu hỏi đã được người dùng chốt 21/11/2026 (E1 "Giai đoạn 5"):
 <!-- VIETQR:START -->
 ## VietQR - chuyển khoản, thu ngân xác nhận tay
 
-**Trạng thái: `COMPLETED`** — mã nguồn và test đã viết; chỉ một phần được chạy (xem D). Đổi `COMPLETED` bằng tay sau khi Gradle, `flutter analyze/test` đều pass và đã thử thật.
+**Trạng thái: `COMPLETED`** (26/11/2026 người dùng nghiệm thu từng phần; chốt 27/11/2026) — người dùng báo: Gradle build PASS, `flutter analyze` sạch, `flutter test` PASS, Admin/Customer lint-typecheck-test-build xanh, thử thật bằng Docker Compose, quét QR bằng app ngân hàng đúng số tiền/nội dung, và quét VietQR động trên điện thoại thật qua LAN (27/11/2026); 3/3 CI xanh. AI chỉ có báo cáo bằng chữ.
 
 ### B. Đã triển khai
 - **Database:** `V4__add_bank_transfer_settings.sql`: `restaurant_settings` thêm `bank_bin` (6 chữ số), `bank_account_no` (6-19 chữ số), `bank_account_name` (≤100). CHECK: đủ cả ba hoặc cùng NULL. Không sửa V1-V3.
@@ -657,7 +664,8 @@ Câu hỏi đã được người dùng chốt 21/11/2026 (E1 "Giai đoạn 5"):
 - **Test:** Backend `BankTransferQrTest` (unit), `RestaurantSettingsRulesTest` (+3), `RestaurantSettingsIT` (+3), `BillingFlowIT` (+1), cập nhật `ProductionMigrationIT`/`DevMigrationAndSchemaIT` (V4), `DbCleaner`; schema `test_schema.py` (+10 case V4) và `run_all.sh`. Admin `validateSettings.test.ts` (+6). Customer `types.test.ts` (+5). Staff `test/features/vietqr_test.dart`.
 
 ### D. Vấn đề / chưa xác nhận
-- **Đã chạy:** V4 trên PostgreSQL 16 (production V1→V3→V4 và dev V1→V2→V3→V4): `tools/schema-test/run_all.sh` 191/191 PASS. Admin: lint, typecheck, 52/52 test, build PASS. Customer Web: lint, typecheck, 66/66 test, build PASS.
+- **Cập nhật 27/11/2026 (người dùng báo):** mục "Chưa chạy" và "Chưa kiểm chứng QR quét được" bên dưới đã được giải quyết (Gradle, Flutter, backend thật, app ngân hàng thật, điện thoại thật qua LAN). Giữ nguyên bên dưới làm lịch sử.
+- **Đã chạy (AI, 26/11/2026):** V4 trên PostgreSQL 16 (production V1→V3→V4 và dev V1→V2→V3→V4): `tools/schema-test/run_all.sh` 191/191 PASS. Admin: lint, typecheck, 52/52 test, build PASS. Customer Web: lint, typecheck, 66/66 test, build PASS.
 - **Chưa chạy:** biên dịch Kotlin, `.\gradlew.bat build` (unit + IT mới), `flutter analyze`, `flutter test`; chưa thử với backend thật và ảnh `img.vietqr.io` thật.
 - Số tài khoản nhận tiền được ghi trong `audit_log` khi đổi cấu hình (giá trị cũ/mới); cân nhắc nếu coi là nhạy cảm.
 - Ảnh QR tải từ `img.vietqr.io` (dịch vụ ngoài): khách/thu ngân cần có Internet; ảnh lỗi vẫn có thông tin chuyển khoản thủ công. Chưa kiểm chứng QR quét được bằng app ngân hàng thật.
@@ -669,6 +677,8 @@ Câu hỏi đã được người dùng chốt 21/11/2026 (E1 "Giai đoạn 5"):
 - Không thêm thư viện mới (ảnh qua `<img>` / `Image.network`).
 
 ### F. Việc tiếp theo
-1. Chạy `.\gradlew.bat build`, `cd staff_app && flutter analyze && flutter test`; sửa lỗi nếu có.
-2. Thử thật: cấu hình ngân hàng ở Admin; Customer Web hiện QR khi có Bill; Staff chọn Chuyển khoản, thu một phần, thu đủ (QR biến mất); chưa cấu hình thì không có QR; quét thử bằng app ngân hàng.
+**Đã xong (27/11/2026):** các bước dưới đây đã được người dùng thực hiện và báo kết quả đạt. Việc còn lại (không chặn): xem trước QR ở Admin (người dùng báo chưa cần); đối soát chuyển khoản tự động (ngoài phạm vi).
+
+1. ~~Chạy `.\gradlew.bat build`, `cd staff_app && flutter analyze && flutter test`; sửa lỗi nếu có.~~ Đã xong.
+2. ~~Thử thật~~ (đã xong): cấu hình ngân hàng ở Admin; Customer Web hiện QR khi có Bill; Staff chọn Chuyển khoản, thu một phần, thu đủ (QR biến mất); chưa cấu hình thì không có QR; quét thử bằng app ngân hàng.
 <!-- VIETQR:END -->
