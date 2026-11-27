@@ -34,6 +34,9 @@ interface FormValues {
   orderConfirmationMode: OrderConfirmationMode;
   requireTablePin: boolean;
   cleaningAutoRelease: boolean;
+  bankBin: string;
+  bankAccountNo: string;
+  bankAccountName: string;
 }
 type Errors = Partial<Record<keyof FormValues, string>>;
 
@@ -62,6 +65,9 @@ function toForm(s: SettingsDto): FormValues {
     orderConfirmationMode: s.orderConfirmationMode,
     requireTablePin: s.requireTablePin,
     cleaningAutoRelease: s.cleaningAutoRelease,
+    bankBin: s.bankBin ?? "",
+    bankAccountNo: s.bankAccountNo ?? "",
+    bankAccountName: s.bankAccountName ?? "",
   };
 }
 
@@ -98,6 +104,20 @@ export function validateSettings(v: FormValues, version: number): { errors: Erro
     else ints[f] = Number(t);
   }
 
+  // VietQR: cả ba trường hoặc để trống cả ba. BIN/số tài khoản bỏ khoảng trắng (người dùng hay dán có dấu cách).
+  const bankBin = v.bankBin.replace(/\s+/g, "");
+  const bankAccountNo = v.bankAccountNo.replace(/\s+/g, "");
+  const bankAccountName = v.bankAccountName.trim().replace(/\s+/g, " ");
+  if (bankBin || bankAccountNo || bankAccountName) {
+    const missing = "Nhập đủ mã BIN, số tài khoản và tên chủ tài khoản, hoặc để trống cả ba.";
+    if (!bankBin) errors.bankBin = missing;
+    else if (!/^\d{6}$/.test(bankBin)) errors.bankBin = "Mã BIN gồm đúng 6 chữ số.";
+    if (!bankAccountNo) errors.bankAccountNo = missing;
+    else if (!/^\d{6,19}$/.test(bankAccountNo)) errors.bankAccountNo = "Số tài khoản gồm 6 đến 19 chữ số.";
+    if (!bankAccountName) errors.bankAccountName = missing;
+    else if (bankAccountName.length > 100) errors.bankAccountName = "Tối đa 100 ký tự.";
+  }
+
   if (Object.keys(errors).length > 0) return { errors };
   return {
     errors,
@@ -115,6 +135,9 @@ export function validateSettings(v: FormValues, version: number): { errors: Erro
       orderConfirmationMode: v.orderConfirmationMode,
       requireTablePin: v.requireTablePin,
       cleaningAutoRelease: v.cleaningAutoRelease,
+      bankBin: bankBin || null,
+      bankAccountNo: bankAccountNo || null,
+      bankAccountName: bankAccountName || null,
       version,
     },
   };
@@ -262,6 +285,23 @@ function SettingsForm({ data }: { data: SettingsDto }) {
         />
       </Section>
 
+      <Section
+        title="Tài khoản nhận tiền (VietQR)"
+        description="Dùng để hiển thị mã VietQR chuyển khoản cho khách và thu ngân. Hệ thống không tự đối soát: thu ngân vẫn xác nhận đã nhận tiền bằng tay. Để trống cả ba ô = không hiển thị mã QR."
+      >
+        <Field label="Mã BIN ngân hàng" error={errors.bankBin} hint="6 chữ số theo NAPAS. Ví dụ Vietcombank 970436, MB Bank 970422.">
+          <Input inputMode="numeric" maxLength={6} value={values.bankBin} onChange={(e) => set("bankBin", e.target.value)} />
+        </Field>
+        <Field label="Số tài khoản" error={errors.bankAccountNo} hint="6 đến 19 chữ số.">
+          <Input inputMode="numeric" value={values.bankAccountNo} onChange={(e) => set("bankAccountNo", e.target.value)} />
+        </Field>
+        <div className="sm:col-span-2">
+          <Field label="Tên chủ tài khoản" error={errors.bankAccountName} hint="Hiển thị cho khách và thu ngân. Nên nhập đúng tên trên tài khoản, viết hoa không dấu.">
+            <Input maxLength={100} value={values.bankAccountName} onChange={(e) => set("bankAccountName", e.target.value)} />
+          </Field>
+        </div>
+      </Section>
+
       <Section title="Thông số cố định" description="Chỉ đọc; được khóa ở cơ sở dữ liệu.">
         <div>
           <p className="text-[13px] text-ink-3">Múi giờ</p>
@@ -305,7 +345,7 @@ export function SettingsPage() {
   const query = useSettings();
   return (
     <>
-      <PageHeader title="Cấu hình nhà hàng" description="Thuế, phí phục vụ, quy tắc đặt món và giới hạn hệ thống." />
+      <PageHeader title="Cấu hình nhà hàng" description="Thuế, phí phục vụ, quy tắc đặt món, tài khoản nhận tiền và giới hạn hệ thống." />
       <QueryBoundary
         query={query}
         skeleton={

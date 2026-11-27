@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { billResponse, joinResponse, menuResponse, ordersResponse } from "@/test/fixtures";
-import { toBill, toJoinResult, toMenu, toOrderView, toServiceCall, toTokenResult } from "./types";
+import { bankTransferResponse, billResponse, joinResponse, menuResponse, ordersResponse } from "@/test/fixtures";
+import { toBankTransfer, toBill, toJoinResult, toMenu, toOrderView, toServiceCall, toTokenResult } from "./types";
 
 describe("toJoinResult", () => {
   it("đọc phiên lồng trong data.session (CW-06 b)", () => {
@@ -166,6 +166,34 @@ describe("toBill", () => {
   it("thiếu dữ liệu thì về 0, không NaN", () => {
     const b = toBill({});
     expect([b.subtotal, b.discount, b.vatAmount, b.total]).toEqual([0, 0, 0, 0]);
+  });
+});
+
+describe("bankTransfer (VietQR)", () => {
+  it("toBill đọc bankTransfer khi backend gửi", () => {
+    expect(toBill({ ...billResponse, bankTransfer: bankTransferResponse }).bankTransfer).toEqual(bankTransferResponse);
+  });
+
+  it("không có bankTransfer thì null: nhà hàng chưa cấu hình ngân hàng hoặc đã thu đủ", () => {
+    expect(toBill(billResponse).bankTransfer).toBeNull();
+    expect(toBill({ ...billResponse, bankTransfer: null }).bankTransfer).toBeNull();
+  });
+
+  it("thiếu URL ảnh hoặc số tài khoản thì không hiển thị QR", () => {
+    expect(toBankTransfer({ ...bankTransferResponse, qrImageUrl: "" })).toBeNull();
+    expect(toBankTransfer({ ...bankTransferResponse, accountNo: "" })).toBeNull();
+    expect(toBankTransfer("x")).toBeNull();
+  });
+
+  it("chỉ nhận URL ảnh http(s), từ chối scheme khác", () => {
+    expect(toBankTransfer({ ...bankTransferResponse, qrImageUrl: "javascript:alert(1)" })).toBeNull();
+    expect(toBankTransfer({ ...bankTransferResponse, qrImageUrl: "data:image/png;base64,AAAA" })).toBeNull();
+    expect(toBankTransfer({ ...bankTransferResponse, qrImageUrl: "http://localhost:9000/qr.png" })?.qrImageUrl).toBe("http://localhost:9000/qr.png");
+  });
+
+  it("số tiền sai kiểu về 0, không NaN", () => {
+    expect(toBankTransfer({ ...bankTransferResponse, amount: "abc" })?.amount).toBe(0);
+    expect(toBankTransfer({ ...bankTransferResponse, amount: "92700" })?.amount).toBe(92700);
   });
 });
 

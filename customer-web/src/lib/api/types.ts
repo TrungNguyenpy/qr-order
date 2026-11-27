@@ -248,6 +248,18 @@ export interface BillLine {
   quantity: number;
   amount: number;
 }
+/** Thông tin chuyển khoản VietQR do backend dựng (chỉ có khi nhà hàng đã cấu hình ngân hàng và Bill còn tiền phải thu). */
+export interface BankTransferView {
+  bankBin: string;
+  accountNo: string;
+  accountName: string;
+  /** Số tiền còn phải thu (đã gắn sẵn trong ảnh QR). */
+  amount: number;
+  /** Nội dung chuyển khoản = số hóa đơn. */
+  transferNote: string;
+  qrImageUrl: string;
+}
+
 export interface BillView {
   lines: BillLine[];
   subtotal: number;
@@ -257,6 +269,24 @@ export interface BillView {
   vatAmount: number;
   total: number;
   status: string;
+  /** null = không hiển thị mã QR (chưa cấu hình ngân hàng, đã thu đủ, hoặc máy chủ cũ không gửi). */
+  bankTransfer: BankTransferView | null;
+}
+
+/** Chấp nhận khi đủ thông tin và URL ảnh là http(s); thiếu bất kỳ phần nào thì không hiển thị QR. */
+export function toBankTransfer(raw: unknown): BankTransferView | null {
+  if (!isRec(raw)) return null;
+  const qrImageUrl = str(raw.qrImageUrl);
+  const accountNo = str(raw.accountNo);
+  if (!/^https?:\/\//i.test(qrImageUrl) || accountNo === "") return null;
+  return {
+    bankBin: str(raw.bankBin),
+    accountNo,
+    accountName: str(raw.accountName),
+    amount: num(raw.amount),
+    transferNote: str(raw.transferNote),
+    qrImageUrl,
+  };
 }
 
 export function toBill(raw: unknown): BillView {
@@ -277,5 +307,6 @@ export function toBill(raw: unknown): BillView {
     vatAmount: num(pick(o, "vatAmount", "tax", "taxAmount")),
     total: num(pick(o, "totalAmount", "total", "grandTotal")),
     status: str(pick(o, "status", "billStatus"), "DRAFT"),
+    bankTransfer: toBankTransfer(o.bankTransfer),
   };
 }

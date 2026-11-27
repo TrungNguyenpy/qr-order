@@ -7,12 +7,17 @@ import '../../../core/providers/core_providers.dart';
 import '../../../core/util/format.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/state_views.dart';
+import '../../auth/application/session_controller.dart';
+import '../../billing/presentation/cashier_sheet.dart';
 import '../../orders/application/session_order_provider.dart';
 import '../../orders/domain/order_models.dart';
 import '../../orders/presentation/item_edit_menu.dart';
 import '../../orders/presentation/order_actions.dart';
 import '../application/floor_plan_controller.dart';
+import '../domain/force_close_policy.dart';
 import '../domain/table_models.dart';
+import 'ended_session_section.dart';
+import 'force_close_dialog.dart';
 import 'table_style.dart';
 
 /// Chi tiết bàn: trạng thái, PIN bàn, order hiện tại và nút xác nhận dọn xong.
@@ -85,15 +90,57 @@ class _TableDetailSheetState extends ConsumerState<_TableDetailSheet> {
     }
   }
 
+  /// Đóng cưỡng bức phiên đang hoạt động (cần `SESSION_FORCE_CLOSE`, lý do bắt buộc).
+  Future<void> _forceClose(FloorPlanTable item) async {
+    final session = item.activeSession;
+    if (session == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await showForceCloseDialog(
+      context,
+      sessionId: session.id,
+      tableCode: item.table.code,
+      version: session.version,
+    );
+    // Dù thành công hay lỗi (phiên đã đổi, Bill chặn...) đều tải lại để thấy trạng thái thật.
+    try {
+      await ref.read(floorPlanProvider.notifier).reload();
+    } on ApiException {
+      // Sơ đồ bàn sẽ tự làm mới qua realtime/thăm dò.
+    }
+    ref.invalidate(endedSessionProvider(item.id));
+    ref.invalidate(sessionOrderProvider(session.id));
+    if (result == null) return;
+    if (result.closed != null) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              'Đã đóng cưỡng bức phiên bàn ${item.table.code}. Bàn chuyển sang Đang dọn.',
+            ),
+          ),
+        );
+    } else if (result.openCashier && mounted) {
+      await showCashierSheet(
+        context,
+        sessionId: session.id,
+        tableCode: item.table.code,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final plan = ref.watch(floorPlanProvider);
     final item = _find(plan.valueOrNull);
+    final user = ref.watch(sessionControllerProvider).user;
 
     // Có thay đổi từ máy chủ (realtime/tải lại): làm mới order của phiên đang xem.
     ref.listen<AsyncValue<List<FloorPlanTable>>>(floorPlanProvider, (_, next) {
       final session = _find(next.valueOrNull)?.activeSession;
       if (session != null) ref.invalidate(sessionOrderProvider(session.id));
+      // Phiên có thể vừa kết thúc (đóng cưỡng bức, thu đủ): làm mới kết quả phiên.
+      ref.invalidate(endedSessionProvider(widget.tableId));
     });
 
     if (item == null) {
@@ -184,6 +231,21 @@ class _TableDetailSheetState extends ConsumerState<_TableDetailSheet> {
             _SessionSection(sessionId: session.id),
             const SizedBox(height: AppSpacing.lg),
             _OrderSection(sessionId: session.id, tableCode: table.code),
+            if (canForceCloseSession(user, session.status)) ...<Widget>[
+              const SizedBox(height: AppSpacing.lg),
+              OutlinedButton.icon(
+                onPressed: () => _forceClose(item),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.danger,
+                  side: const BorderSide(color: AppColors.danger),
+                ),
+                icon: const Icon(Icons.block_rounded, size: 18),
+                label: const Text('Đóng cưỡng bức phiên'),
+              ),
+            ],
+          ] else if (table.status == TableStatus.cleaning) ...<Widget>[
+            const SizedBox(height: AppSpacing.lg),
+            EndedSessionSection(tableId: table.id, tableCode: table.code),
           ] else if (table.status == TableStatus.available) ...<Widget>[
             const SizedBox(height: AppSpacing.lg),
             const InlineBanner(

@@ -69,6 +69,9 @@ class OrderQueryService(
             orderId = order.id, sessionId = sessionId, tableCode = table.code, status = order.status,
             batches = staffBatches(batches, items, mapOf(sessionId to session), mapOf(table.id!! to table)),
             billableTotal = ShortfallCalculator.billableSubtotal(items),
+            shortfallAmount = order.shortfallAmount,
+            writeoffReason = order.writeoffReason,
+            writtenOffAt = order.writtenOffAt,
         )
     }
 

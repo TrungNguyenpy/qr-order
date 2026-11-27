@@ -121,6 +121,13 @@ final tableSearchProvider = NotifierProvider<TableSearchNotifier, String>(
   TableSearchNotifier.new,
 );
 
+/// Phiên kết thúc gần nhất (CLOSED / FORCE_CLOSED) của bàn, dùng để hiện kết quả
+/// đóng phiên (thất thu...) trên chi tiết bàn đang dọn. null = chưa có.
+final endedSessionProvider = FutureProvider.autoDispose
+    .family<StaffSession?, int>((ref, tableId) {
+      return ref.watch(tablesRepositoryProvider).latestEndedSession(tableId);
+    });
+
 /// Chi tiết phiên (PIN bàn...) cho bàn đang xem.
 final staffSessionProvider = FutureProvider.autoDispose
     .family<StaffSession, int>((ref, sessionId) {

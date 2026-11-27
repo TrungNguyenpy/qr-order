@@ -163,3 +163,7 @@ app:
     phone: ${RECEIPT_PHONE:}
     tax-code: ${RECEIPT_TAX_CODE:}
     footer: ${RECEIPT_FOOTER:Phiếu thanh toán nội bộ - không thay thế hóa đơn điện tử}
+  vietqr:
+    # VietQR (thu ngân xác nhận tay): chỉ ghép URL ảnh, không đối soát tự động. Tài khoản nhận tiền cấu hình ở trang Cấu hình (Admin).
+    image-base-url: ${VIETQR_IMAGE_BASE_URL:https://img.vietqr.io/image}
+    template: ${VIETQR_TEMPLATE:compact2}

@@ -25,11 +25,11 @@ export SPRING_PROFILES_ACTIVE=dev DB_URL=jdbc:postgresql://localhost:5432/qr_ord
 
 | Profile | Flyway locations | Ghi chú |
 | --- | --- | --- |
-| `dev` | `db/migration` + `db/seed-dev` (V1 → V2 → V3) | Seed VAT 8% thử nghiệm, 11 bàn, QR dev `/t/dev-qr-T01`..., menu mẫu; không có tài khoản (ADMIN đầu tiên tạo từ `INITIAL_ADMIN_*`) |
-| `prod` | chỉ `db/migration` (V1 → V3) | `ddl-auto: validate`, OpenAPI tắt (bật bằng `OPENAPI_ENABLED=true`) |
+| `dev` | `db/migration` + `db/seed-dev` (V1 → V2 → V3 → V4) | Seed VAT 8% thử nghiệm, 11 bàn, QR dev `/t/dev-qr-T01`..., menu mẫu; không có tài khoản (ADMIN đầu tiên tạo từ `INITIAL_ADMIN_*`) |
+| `prod` | chỉ `db/migration` (V1 → V3 → V4) | `ddl-auto: validate`, OpenAPI tắt (bật bằng `OPENAPI_ENABLED=true`) |
 | `test` | như dev | Dùng trong integration test (Testcontainers) |
 
-Hibernate luôn ở chế độ `validate`: schema chỉ do Flyway quản lý. Migration mới đánh số từ **V4**, không sửa V1–V3.
+Hibernate luôn ở chế độ `validate`: schema chỉ do Flyway quản lý. Migration mới đánh số từ **V5**, không sửa V1–V4.
 
 ## Kiểm thử
 
@@ -85,7 +85,7 @@ Integration test không dùng `@Transactional` rollback: trigger DEFERRABLE ch�
 
 Công cụ phụ (không cần JVM):
 
-- `tools/schema-test/run_all.sh`: chạy V1/V2/V3 bằng psql và 181 case schema (Python + psycopg).
+- `tools/schema-test/run_all.sh`: chạy V1/V2/V3/V4 bằng psql và 191 case schema (Python + psycopg).
 - `tools/verify/check_entity_mapping.py`: đối chiếu tĩnh 26 entity Kotlin với catalog PostgreSQL.
 - `tools/verify/phase1_sql_check.py`: 26 case cho các câu SQL Giai đoạn 1 (UPDATE gốc, audit, settings, DbCleaner) trên database dev V1→V2→V3.
 - `tools/verify/concurrent_admin_demote.py`: hai ADMIN hạ quyền nhau đồng thời (20 vòng), kiểm tra BR-A09 và không deadlock.

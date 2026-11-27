@@ -23,6 +23,10 @@ export interface UpdateSettingsInput {
   orderConfirmationMode: OrderConfirmationMode;
   requireTablePin: boolean;
   cleaningAutoRelease: boolean;
+  /** Cả ba cùng null (xóa cấu hình) hoặc cùng có giá trị. PUT thay thế toàn bộ nên luôn gửi đủ. */
+  bankBin: string | null;
+  bankAccountNo: string | null;
+  bankAccountName: string | null;
   version: number;
 }
 

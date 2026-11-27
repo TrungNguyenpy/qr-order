@@ -1,5 +1,5 @@
 """
-Kiểm thử schema QR Order (V1 + V2, và V3 nếu đã áp dụng) trên PostgreSQL 16.
+Kiểm thử schema QR Order (V1 + V2, và V3, V4 nếu đã áp dụng) trên PostgreSQL 16.
 Mỗi case chạy trong một transaction riêng và COMMIT (để trigger DEFERRED chạy).
 expect=None  -> phải thành công
 expect="..." -> phải lỗi và thông báo lỗi chứa chuỗi này
@@ -630,6 +630,24 @@ with psycopg.connect(DSN) as c:
         plan = "\n".join(r[0] for r in c.execute("EXPLAIN " + sql).fetchall())
         idx = [w for w in plan.replace("(", " ").split() if w.startswith(("ix_", "ux_"))]
         results.append((f"IDX {name} dùng index", bool(idx), ", ".join(sorted(set(idx))) or plan.splitlines()[0]))
+
+# --------------------------------------------------------------------------- 16. V4: tài khoản ngân hàng VietQR
+HAS_V4 = bool(q("SELECT 1 FROM information_schema.columns WHERE table_name='restaurant_settings' AND column_name='bank_bin'"))
+if HAS_V4:
+    S = "UPDATE restaurant_settings SET "
+    run("V4: mặc định chưa cấu hình ngân hàng (cả ba NULL)",
+        "SELECT 1 FROM restaurant_settings WHERE bank_bin IS NULL AND bank_account_no IS NULL AND bank_account_name IS NULL")
+    run("V4: đủ ba trường hợp lệ được lưu",
+        S + "bank_bin='970436', bank_account_no='0011001234567', bank_account_name='NGUYEN VAN A'")
+    run("V4: thiếu một trường bị chặn (all-or-none)", S + "bank_account_no = NULL", "ck_restaurant_settings_bank_all_or_none")
+    run("V4: BIN không đủ 6 chữ số bị chặn", S + "bank_bin='9704'", "ck_restaurant_settings_bank_bin")
+    run("V4: BIN có chữ cái bị chặn", S + "bank_bin='97043a'", "ck_restaurant_settings_bank_bin")
+    run("V4: số tài khoản < 6 chữ số bị chặn", S + "bank_account_no='12345'", "ck_restaurant_settings_bank_account_no")
+    run("V4: số tài khoản > 19 chữ số bị chặn", S + "bank_account_no='12345678901234567890'", "value too long")
+    run("V4: số tài khoản có ký tự lạ bị chặn", S + "bank_account_no='0011-0012'", "ck_restaurant_settings_bank_account_no")
+    run("V4: tên chủ tài khoản rỗng bị chặn", S + "bank_account_name='   '", "ck_restaurant_settings_bank_account_name")
+    run("V4: xóa cấu hình (cả ba NULL) được phép",
+        S + "bank_bin=NULL, bank_account_no=NULL, bank_account_name=NULL")
 
 # --------------------------------------------------------------------------- report
 passed = sum(1 for _, ok, _ in results if ok)

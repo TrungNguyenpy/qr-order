@@ -102,6 +102,11 @@ export interface SettingsDto {
   orderConfirmationMode: OrderConfirmationMode;
   requireTablePin: boolean;
   cleaningAutoRelease: boolean;
+  /** Tài khoản nhận tiền VietQR; null = chưa cấu hình (không hiển thị mã QR chuyển khoản). */
+  bankBin: string | null;
+  bankAccountNo: string | null;
+  bankAccountName: string | null;
+  bankConfigured: boolean;
   timezone: string;
   moneyRoundingMode: string;
   pricesIncludeVat: boolean;

@@ -67,6 +67,11 @@ class ApiPaths {
   static String refundReceipt(int refundId) => '$_p/refunds/$refundId/receipt';
   static String sessionReopen(int sessionId) =>
       '$_p/sessions/$sessionId/reopen';
+
+  // --- Đợt 4: đóng cưỡng bức phiên, danh sách phiên ---
+  static const String sessions = '$_p/sessions';
+  static String sessionForceClose(int sessionId) =>
+      '$_p/sessions/$sessionId/force-close';
   static String orderBills(int orderId) => '$_p/orders/$orderId/bills';
 
   /// Kiểm tra máy chủ sống (Spring Actuator, công khai).

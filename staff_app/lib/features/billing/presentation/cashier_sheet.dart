@@ -17,9 +17,12 @@ import '../../orders/application/session_order_provider.dart';
 import '../../tables/application/floor_plan_controller.dart';
 import '../application/billing_providers.dart';
 import '../domain/billing_models.dart';
+import '../domain/write_off.dart';
 import '../../orders/domain/order_models.dart';
 import 'bill_dialogs.dart';
 import 'manager_bill_actions.dart';
+import 'refund_history_section.dart';
+import 'write_off_card.dart';
 
 /// Thu ngân một bàn: xem order, tính tiền (giảm giá nếu có quyền), thu tiền,
 /// xác nhận giao dịch chờ, xem phiếu thanh toán.
@@ -89,6 +92,7 @@ class _CashierSheet extends ConsumerWidget {
                 sessionId: sessionId,
                 billableTotal: data.billableTotal,
                 orderStatus: data.status,
+                order: data,
               );
             },
           ),
@@ -126,12 +130,16 @@ class _BillSection extends ConsumerWidget {
     required this.sessionId,
     required this.billableTotal,
     required this.orderStatus,
+    required this.order,
   });
 
   final int orderId;
   final int sessionId;
   final int billableTotal;
   final OrderStatus? orderStatus;
+
+  /// Order của phiên: nguồn số liệu thất thu khi WRITTEN_OFF (kể cả chưa có Bill).
+  final SessionOrder order;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -144,6 +152,20 @@ class _BillSection extends ConsumerWidget {
         onRetry: () => ref.invalidate(billProvider(orderId)),
       ),
       data: (data) {
+        // Order đã kết thúc không còn tính tiền được: ghi nhận thất thu (không có Bill)
+        // hoặc đơn bị hủy khi đóng cưỡng bức phiên.
+        if (data == null && order.isWrittenOff) {
+          return _WriteOffWithoutBill(order: order);
+        }
+        if (data == null && orderStatus == OrderStatus.voided) {
+          return const InlineBanner(
+            message:
+                'Đơn đã bị hủy (VOIDED) khi đóng phiên, không còn món tính tiền.',
+            icon: Icons.info_outline_rounded,
+            foreground: AppColors.muted,
+            background: AppColors.neutralSoft,
+          );
+        }
         // Chưa có hóa đơn, hoặc hóa đơn cũ đã bị hủy và order đã được mở lại: tính tiền mới.
         final needsNewBill =
             data == null ||
@@ -161,8 +183,32 @@ class _BillSection extends ConsumerWidget {
           sessionId: sessionId,
           orderStatus: orderStatus,
           billableTotal: billableTotal,
+          order: order,
         );
       },
+    );
+  }
+}
+
+/// Order WRITTEN_OFF khi chưa tính tiền (không có Bill): chỉ xem, không thao tác.
+class _WriteOffWithoutBill extends StatelessWidget {
+  const _WriteOffWithoutBill({required this.order});
+
+  final SessionOrder order;
+
+  @override
+  Widget build(BuildContext context) {
+    final info = WriteOffInfo.resolve(order: order);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        if (info != null) WriteOffCard(info: info),
+        const SizedBox(height: AppSpacing.sm),
+        const Text(
+          'Phiên bị đóng cưỡng bức khi chưa tính tiền nên không có hóa đơn.',
+          style: TextStyle(color: AppColors.muted, fontSize: 12.5),
+        ),
+      ],
     );
   }
 }
@@ -287,12 +333,14 @@ class _BillView extends ConsumerWidget {
     required this.sessionId,
     required this.orderStatus,
     required this.billableTotal,
+    required this.order,
   });
 
   final Bill bill;
   final int sessionId;
   final OrderStatus? orderStatus;
   final int billableTotal;
+  final SessionOrder order;
 
   Future<void> _record(BuildContext context, WidgetRef ref) async {
     final result = await showRecordPaymentDialog(context, bill: bill);
@@ -375,14 +423,24 @@ class _BillView extends ConsumerWidget {
               label: bill.status == BillStatus.active
                   ? bill.paymentStatus.label
                   : bill.status.label,
-              foreground: bill.isPaid ? AppColors.success : AppColors.warning,
-              background: bill.isPaid
+              foreground: bill.isWrittenOff
+                  ? AppColors.danger
+                  : bill.isPaid
+                  ? AppColors.success
+                  : AppColors.warning,
+              background: bill.isWrittenOff
+                  ? AppColors.dangerSoft
+                  : bill.isPaid
                   ? AppColors.successSoft
                   : AppColors.warningSoft,
             ),
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
+        if (bill.isWrittenOff) ...<Widget>[
+          WriteOffCard(info: WriteOffInfo.resolve(order: order, bill: bill)!),
+          const SizedBox(height: AppSpacing.sm),
+        ],
         ManagerBillActions(
           bill: bill,
           orderStatus: orderStatus,
@@ -463,6 +521,10 @@ class _BillView extends ConsumerWidget {
                 onReceipt: () => showReceiptDialog(context, payment.id),
               ),
             ),
+        ],
+        if (billMayHaveRefunds(bill)) ...<Widget>[
+          const SizedBox(height: AppSpacing.md),
+          RefundHistorySection(billId: bill.id),
         ],
         if (bill.canRecordPayment) ...<Widget>[
           const SizedBox(height: AppSpacing.md),

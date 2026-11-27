@@ -10,6 +10,7 @@ import '../../../shared/widgets/state_views.dart';
 import '../application/billing_providers.dart';
 import '../data/billing_repository.dart';
 import '../domain/billing_models.dart';
+import 'bank_transfer_qr.dart';
 
 /// Lựa chọn khi tính tiền: có giảm giá hay không.
 class BillChoice {
@@ -185,10 +186,29 @@ class _RecordPaymentDialogState extends ConsumerState<_RecordPaymentDialog> {
   ApiException? _error;
 
   @override
+  void initState() {
+    super.initState();
+    // QR chuyển khoản đổi theo số tiền đang nhập (thu một phần).
+    _amount.addListener(_onAmountChanged);
+  }
+
+  @override
   void dispose() {
+    _amount.removeListener(_onAmountChanged);
     _amount.dispose();
     _note.dispose();
     super.dispose();
+  }
+
+  void _onAmountChanged() {
+    if (_method == PaymentMethod.bankTransfer && mounted) setState(() {});
+  }
+
+  /// Số tiền in trên QR: số đang nhập nếu hợp lệ (1..còn lại), ngược lại là số còn lại.
+  int get _qrAmount {
+    final typed = int.tryParse(_amount.text.trim());
+    final remaining = widget.bill.remainingAmount;
+    return typed != null && typed > 0 && typed <= remaining ? typed : remaining;
   }
 
   String? _validateAmount(String? raw) {
@@ -278,6 +298,17 @@ class _RecordPaymentDialogState extends ConsumerState<_RecordPaymentDialog> {
                 decoration: const InputDecoration(labelText: 'Số tiền (đ)'),
                 validator: _validateAmount,
               ),
+              if (_method == PaymentMethod.bankTransfer) ...<Widget>[
+                const SizedBox(height: AppSpacing.md),
+                if (widget.bill.bankTransfer case final transfer?)
+                  BankTransferQr(info: transfer, amount: _qrAmount)
+                else
+                  const InlineBanner(
+                    message:
+                        'Chưa cấu hình tài khoản nhận tiền VietQR. Quản trị viên nhập ở Cấu hình nhà hàng; '
+                        'vẫn có thể ghi nhận chuyển khoản thủ công.',
+                  ),
+              ],
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Đã nhận tiền ngay'),

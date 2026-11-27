@@ -17,6 +17,9 @@ const base: Values = {
   orderConfirmationMode: "FIRST_BATCH_ONLY",
   requireTablePin: false,
   cleaningAutoRelease: false,
+  bankBin: "",
+  bankAccountNo: "",
+  bankAccountName: "",
 };
 
 describe("validateSettings", () => {
@@ -44,5 +47,43 @@ describe("validateSettings", () => {
   it("các tham số số nguyên phải > 0", () => {
     expect(validateSettings({ ...base, maxItemQuantity: "0" }, 1).errors.maxItemQuantity).toBeDefined();
     expect(validateSettings({ ...base, guestJwtTtlMinutes: "abc" }, 1).errors.guestJwtTtlMinutes).toBeDefined();
+  });
+  describe("tài khoản nhận tiền VietQR", () => {
+    const bank = { bankBin: "970436", bankAccountNo: "0011001234567", bankAccountName: "NGUYEN VAN A" };
+
+    it("để trống cả ba: gửi null (xóa cấu hình), không lỗi", () => {
+      const r = validateSettings(base, 1);
+      expect(r.errors).toEqual({});
+      expect(r.input).toMatchObject({ bankBin: null, bankAccountNo: null, bankAccountName: null });
+    });
+    it("đủ ba trường hợp lệ: gửi nguyên giá trị", () => {
+      const r = validateSettings({ ...base, ...bank }, 1);
+      expect(r.errors).toEqual({});
+      expect(r.input).toMatchObject(bank);
+    });
+    it("bỏ khoảng trắng trong BIN/số tài khoản và gộp khoảng trắng trong tên", () => {
+      const r = validateSettings({ ...base, bankBin: " 970 436 ", bankAccountNo: "0011 0012 34567", bankAccountName: "  NGUYEN   VAN A " }, 1);
+      expect(r.input).toMatchObject(bank);
+    });
+    it("thiếu một hoặc hai trường: báo lỗi đúng ô còn thiếu, không gửi", () => {
+      const r = validateSettings({ ...base, bankBin: "970436" }, 1);
+      expect(r.input).toBeUndefined();
+      expect(r.errors.bankBin).toBeUndefined();
+      expect(r.errors.bankAccountNo).toBeDefined();
+      expect(r.errors.bankAccountName).toBeDefined();
+      expect(validateSettings({ ...base, bankAccountName: "A" }, 1).errors.bankBin).toBeDefined();
+    });
+    it("BIN phải đúng 6 chữ số; số tài khoản 6 đến 19 chữ số", () => {
+      expect(validateSettings({ ...base, ...bank, bankBin: "9704" }, 1).errors.bankBin).toBeDefined();
+      expect(validateSettings({ ...base, ...bank, bankBin: "97043a" }, 1).errors.bankBin).toBeDefined();
+      expect(validateSettings({ ...base, ...bank, bankAccountNo: "12345" }, 1).errors.bankAccountNo).toBeDefined();
+      expect(validateSettings({ ...base, ...bank, bankAccountNo: "1".repeat(20) }, 1).errors.bankAccountNo).toBeDefined();
+      expect(validateSettings({ ...base, ...bank, bankAccountNo: "1".repeat(19) }, 1).errors).toEqual({});
+      expect(validateSettings({ ...base, ...bank, bankAccountNo: "0011-0012" }, 1).errors.bankAccountNo).toBeDefined();
+    });
+    it("tên chủ tài khoản tối đa 100 ký tự", () => {
+      expect(validateSettings({ ...base, ...bank, bankAccountName: "A".repeat(101) }, 1).errors.bankAccountName).toBeDefined();
+      expect(validateSettings({ ...base, ...bank, bankAccountName: "A".repeat(100) }, 1).errors).toEqual({});
+    });
   });
 });

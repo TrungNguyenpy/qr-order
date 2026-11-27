@@ -16,6 +16,22 @@ import java.math.RoundingMode
 
 interface RestaurantSettingsRepository : JpaRepository<RestaurantSettings, Short>
 
+/** Tài khoản nhận tiền đã chuẩn hóa (trim, rỗng thành null); cả ba cùng null hoặc cùng có giá trị. */
+data class BankAccountInput(val bin: String?, val accountNo: String?, val accountName: String?) {
+    val isEmpty: Boolean get() = bin == null && accountNo == null && accountName == null
+
+    companion object {
+        fun of(request: UpdateRestaurantSettingsRequest) = BankAccountInput(
+            bin = request.bankBin.cleaned(),
+            accountNo = request.bankAccountNo.cleaned(),
+            // Gộp khoảng trắng liên tiếp trong tên để lưu gọn.
+            accountName = request.bankAccountName.cleaned()?.replace(Regex("\\s+"), " "),
+        )
+
+        private fun String?.cleaned(): String? = this?.trim()?.takeIf { it.isNotEmpty() }
+    }
+}
+
 /**
  * Quy tắc kiểm tra cấu hình (thuần, không phụ thuộc Spring để unit test).
  * Bean Validation trên DTO đã kiểm tra từng trường; ở đây kiểm tra lại các giới hạn tiền tệ (phòng khi
@@ -23,6 +39,9 @@ interface RestaurantSettingsRepository : JpaRepository<RestaurantSettings, Short
  */
 object RestaurantSettingsRules {
     const val RATE_SCALE = 4
+    const val BANK_ALL_OR_NONE = "Phải nhập đủ mã BIN, số tài khoản và tên chủ tài khoản, hoặc để trống cả ba"
+    private val BIN_REGEX = Regex("^[0-9]{6}$")
+    private val ACCOUNT_REGEX = Regex("^[0-9]{6,19}$")
     const val SERVICE_FEE_TAXABLE_REQUIRED =
         "Phải chốt phí phục vụ có chịu VAT hay không (serviceFeeTaxable) trước khi đặt phí phục vụ lớn hơn 0 (BR-P04)"
 
@@ -38,6 +57,20 @@ object RestaurantSettingsRules {
                 details += ErrorDetail("serviceFeeTaxable", SERVICE_FEE_TAXABLE_REQUIRED)
             }
         }
+        details += validateBank(BankAccountInput.of(request))
+        return details
+    }
+
+    /** VietQR: đủ cả ba hoặc không có gì; BIN 6 chữ số; số tài khoản 6-19 chữ số. Trùng CHECK V4. */
+    fun validateBank(bank: BankAccountInput): List<ErrorDetail> {
+        if (bank.isEmpty) return emptyList()
+        val details = mutableListOf<ErrorDetail>()
+        if (bank.bin == null) details += ErrorDetail("bankBin", BANK_ALL_OR_NONE)
+        else if (!BIN_REGEX.matches(bank.bin)) details += ErrorDetail("bankBin", "Mã BIN ngân hàng phải gồm đúng 6 chữ số")
+        if (bank.accountNo == null) details += ErrorDetail("bankAccountNo", BANK_ALL_OR_NONE)
+        else if (!ACCOUNT_REGEX.matches(bank.accountNo)) details += ErrorDetail("bankAccountNo", "Số tài khoản phải gồm 6-19 chữ số")
+        if (bank.accountName == null) details += ErrorDetail("bankAccountName", BANK_ALL_OR_NONE)
+        else if (bank.accountName.length > 100) details += ErrorDetail("bankAccountName", "Tên chủ tài khoản tối đa 100 ký tự")
         return details
     }
 
@@ -86,6 +119,10 @@ class RestaurantSettingsService(
         settings.orderConfirmationMode = requireNotNull(request.orderConfirmationMode)
         settings.requireTablePin = requireNotNull(request.requireTablePin)
         settings.cleaningAutoRelease = requireNotNull(request.cleaningAutoRelease)
+        val bank = BankAccountInput.of(request)
+        settings.bankBin = bank.bin
+        settings.bankAccountNo = bank.accountNo
+        settings.bankAccountName = bank.accountName
         val after = snapshot(settings)
 
         val changed = before.keys.filter { !sameValue(before[it], after[it]) }
@@ -127,6 +164,9 @@ class RestaurantSettingsService(
         "orderConfirmationMode" to s.orderConfirmationMode,
         "requireTablePin" to s.requireTablePin,
         "cleaningAutoRelease" to s.cleaningAutoRelease,
+        "bankBin" to s.bankBin,
+        "bankAccountNo" to s.bankAccountNo,
+        "bankAccountName" to s.bankAccountName,
     )
 
     /** BigDecimal so sánh theo giá trị (0.08 == 0.0800), còn lại theo equals. */

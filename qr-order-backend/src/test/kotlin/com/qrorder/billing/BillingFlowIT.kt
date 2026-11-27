@@ -58,6 +58,43 @@ class BillingFlowIT : BillingIntegrationTestBase() {
     }
 
     @Test
+    fun `VietQR - bankTransfer only appears when the bank account is configured and money is still due`() {
+        val (guest, orderId, _) = tableWithStandardOrder()
+        val bill = createBillOk(orderId)
+        val billId = bill["id"].asLong()
+        val billNumber = bill["billNumber"].asText()
+
+        // Chưa cấu hình ngân hàng: không có bankTransfer ở cả hai phía, luồng cũ không đổi.
+        assertTrue(bill["bankTransfer"]?.isNull != false)
+        assertTrue(data(api.get("/api/v1/guest/bill", guest.token))["bankTransfer"]?.isNull != false)
+
+        jdbc.update(
+            "UPDATE restaurant_settings SET bank_bin = '970436', bank_account_no = '0011001234567', bank_account_name = 'NGUYEN VAN A'",
+        )
+        val guestInfo = data(api.get("/api/v1/guest/bill", guest.token))["bankTransfer"]
+        assertEquals("970436", guestInfo["bankBin"].asText())
+        assertEquals("0011001234567", guestInfo["accountNo"].asText())
+        assertEquals("NGUYEN VAN A", guestInfo["accountName"].asText())
+        assertEquals(159_000L, guestInfo["amount"].asLong())
+        assertEquals(billNumber, guestInfo["transferNote"].asText())
+        val url = guestInfo["qrImageUrl"].asText()
+        assertTrue(url.startsWith("https://img.vietqr.io/image/970436-0011001234567-compact2.png?"), url)
+        assertTrue(url.contains("amount=159000") && url.contains("addInfo=$billNumber") && url.contains("accountName=NGUYEN%20VAN%20A"), url)
+
+        val staffInfo = data(api.get("/api/v1/orders/$orderId/bill", cashier.accessToken))["bankTransfer"]
+        assertEquals(159_000L, staffInfo["amount"].asLong())
+
+        // Thu một phần: số tiền trên QR là phần còn phải thu.
+        payOk(billId, 100_000L)
+        assertEquals(59_000L, data(api.get("/api/v1/guest/bill", guest.token))["bankTransfer"]["amount"].asLong())
+        assertEquals(59_000L, data(api.get("/api/v1/orders/$orderId/bill", cashier.accessToken))["bankTransfer"]["amount"].asLong())
+
+        // Thu đủ: không còn tiền phải thu thì không có QR.
+        payOk(billId, 59_000L)
+        assertTrue(data(api.get("/api/v1/orders/$orderId/bill", cashier.accessToken))["bankTransfer"]?.isNull != false)
+    }
+
+    @Test
     fun `create bill is blocked - VAT not configured, pending or claimed batch, no billable item, second bill`() {
         val (guest, orderId, _) = tableWithStandardOrder()
 

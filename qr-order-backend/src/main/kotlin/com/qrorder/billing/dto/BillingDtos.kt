@@ -1,5 +1,6 @@
 package com.qrorder.billing.dto
 
+import com.qrorder.billing.service.BankTransferInfo
 import com.qrorder.billing.domain.BillStatus
 import com.qrorder.billing.domain.DiscountType
 import com.qrorder.billing.domain.PaymentMethod
@@ -179,6 +180,8 @@ data class BillResponse(
     /** BR-P17: Order LOCKED chờ Bill thay thế. */
     val orderNeedsAttention: Boolean = false,
     val refunds: List<RefundResponse> = emptyList(),
+    /** VietQR: có khi Bill ACTIVE còn tiền phải thu và nhà hàng đã cấu hình ngân hàng; số tiền = [remainingAmount]. */
+    val bankTransfer: BankTransferInfo? = null,
 )
 
 /** Phiếu tạm tính cho khách (UC10): không có thông tin nhân viên, không có chi tiết giao dịch. */
@@ -197,6 +200,8 @@ data class GuestBillResponse(
     val remainingAmount: Long,
     val lines: List<BillLineResponse>,
     val createdAt: OffsetDateTime?,
+    /** VietQR: có khi Bill ACTIVE còn tiền phải thu và nhà hàng đã cấu hình ngân hàng. */
+    val bankTransfer: BankTransferInfo? = null,
 )
 
 /** Tóm tắt Bill sau một thao tác thanh toán. */

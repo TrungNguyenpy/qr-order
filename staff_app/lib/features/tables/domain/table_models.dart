@@ -248,5 +248,8 @@ class StaffSession {
   /// Phiên đã được nhân viên xác nhận đợt đầu (BR-S04).
   bool get isVerified => verifiedAt != null;
 
+  /// Phiên bị Manager đóng cưỡng bức (trạng thái cuối).
+  bool get isForceClosed => status == SessionStatus.forceClosed;
+
   bool get hasPin => (tablePin ?? '').isNotEmpty;
 }

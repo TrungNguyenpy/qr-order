@@ -6,6 +6,8 @@ import 'package:staff_app/core/realtime/stomp_realtime_service.dart';
 import 'package:staff_app/features/auth/application/session_controller.dart';
 import 'package:staff_app/features/auth/data/auth_repository.dart';
 import 'package:staff_app/features/auth/domain/auth_models.dart';
+import 'package:staff_app/features/billing/data/billing_repository.dart';
+import 'package:staff_app/features/billing/domain/billing_models.dart';
 import 'package:staff_app/features/menu/data/menu_repository.dart';
 import 'package:staff_app/features/menu/domain/menu_models.dart';
 import 'package:staff_app/features/orders/data/orders_repository.dart';
@@ -116,12 +118,51 @@ class FakeTablesRepository implements TablesRepository {
   final List<List<int>> cleanedCalls = <List<int>>[]; // [tableId, version]
   ApiException? cleanError;
 
+  /// Đợt 4: `sessionId:reason:version` của mỗi lần đóng cưỡng bức.
+  final List<String> forceCloseCalls = <String>[];
+  ApiException? forceCloseError;
+
+  /// Phiên kết thúc gần nhất trả về cho `latestEndedSession`.
+  StaffSession? endedSession;
+  ApiException? endedSessionError;
+
   @override
   Future<List<FloorPlanTable>> floorPlan() async => const <FloorPlanTable>[];
 
   @override
-  Future<StaffSession> session(int sessionId) =>
-      throw UnimplementedError('không dùng trong test này');
+  Future<StaffSession> forceClose(
+    int sessionId, {
+    required String reason,
+    int? version,
+  }) async {
+    forceCloseCalls.add('$sessionId:$reason:${version ?? ''}');
+    final error = forceCloseError;
+    if (error != null) throw error;
+    return StaffSession(
+      id: sessionId,
+      tableId: 1,
+      status: SessionStatus.forceClosed,
+      lastActivityAt: DateTime.utc(2026, 11, 25),
+      needsAttention: false,
+      deviceCount: 0,
+      version: (version ?? 0) + 1,
+      closeReason: reason,
+    );
+  }
+
+  @override
+  Future<StaffSession?> latestEndedSession(int tableId) async {
+    final error = endedSessionError;
+    if (error != null) throw error;
+    return endedSession;
+  }
+
+  /// Chi tiết phiên trả về cho `session`; mặc định không dùng (ném lỗi).
+  StaffSession? sessionResult;
+
+  @override
+  Future<StaffSession> session(int sessionId) async =>
+      sessionResult ?? (throw UnimplementedError('không dùng trong test này'));
 
   @override
   Future<DiningTable> confirmCleaned({
@@ -199,6 +240,14 @@ class FakeOrdersRepository implements OrdersRepository {
   @override
   Future<void> advanceKitchenItem(int itemId, OrderItemStatus target) =>
       _record('advance:$itemId:${target.apiName}');
+
+  /// Order trả về cho `sessionOrder` (Đợt 4: màn kết quả đóng phiên, thu ngân).
+  SessionOrder? sessionOrderResult;
+
+  @override
+  Future<SessionOrder> sessionOrder(int sessionId) async =>
+      sessionOrderResult ??
+      SessionOrder(sessionId: sessionId, batches: const <OrderBatch>[], billableTotal: 0);
 
   @override
   Future<void> serveItem(int itemId) => _record('serve:$itemId');
@@ -300,6 +349,44 @@ class FakeMenuRepository implements MenuRepository {
   @override
   Future<List<OptionGroupDetail>> optionGroupsOf(MenuProduct product) async =>
       const <OptionGroupDetail>[];
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError(
+    '${invocation.memberName} không dùng trong test',
+  );
+}
+
+/// Kho thu ngân giả cho Đợt 4: biên lai hoàn tiền, lịch sử hoàn, Bill hiện hành.
+class FakeBillingRepository implements BillingRepository {
+  RefundReceipt? refundReceiptResult;
+  ApiException? receiptError;
+
+  /// Giữ lời gọi biên lai ở trạng thái đang tải cho tới khi hoàn tất (test Loading).
+  Completer<void>? receiptGate;
+  List<Refund> refundList = <Refund>[];
+  ApiException? refundsError;
+  Bill? bill;
+  final List<int> receiptCalls = <int>[];
+
+  @override
+  Future<RefundReceipt> refundReceipt(int refundId) async {
+    receiptCalls.add(refundId);
+    final gate = receiptGate;
+    if (gate != null) await gate.future;
+    final error = receiptError;
+    if (error != null) throw error;
+    return refundReceiptResult!;
+  }
+
+  @override
+  Future<List<Refund>> refunds(int billId) async {
+    final error = refundsError;
+    if (error != null) throw error;
+    return refundList;
+  }
+
+  @override
+  Future<Bill?> latestBill(int orderId) async => bill;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError(

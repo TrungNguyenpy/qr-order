@@ -96,6 +96,17 @@ export const ordersResponse = {
   ],
 };
 
+/** `bankTransfer` trong GET /guest/bill khi nhà hàng đã cấu hình ngân hàng (VietQR). */
+export const bankTransferResponse = {
+  bankBin: "970436",
+  accountNo: "0011001234567",
+  accountName: "NGUYEN VAN A",
+  amount: 92700,
+  transferNote: "BILL-20261126-0001",
+  qrImageUrl:
+    "https://img.vietqr.io/image/970436-0011001234567-compact2.png?amount=92700&addInfo=BILL-20261126-0001&accountName=NGUYEN%20VAN%20A",
+};
+
 /** GET /guest/bill: tên field kết thúc bằng `Amount` (CW-06 d). */
 export const billResponse = {
   billId: "bill-1",

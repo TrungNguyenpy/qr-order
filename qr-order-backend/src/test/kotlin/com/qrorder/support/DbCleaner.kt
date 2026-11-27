@@ -57,7 +57,8 @@ object DbCleaner {
                        max_pending_batches_per_session = 3, join_rate_limit_per_minute = 10,
                        order_rate_limit_per_minute = 5, max_item_quantity = 99,
                        order_confirmation_mode = 'FIRST_BATCH_ONLY', require_table_pin = false,
-                       cleaning_auto_release = false, updated_by = NULL, version = 1
+                       cleaning_auto_release = false, bank_bin = NULL, bank_account_no = NULL,
+                       bank_account_name = NULL, updated_by = NULL, version = 1
                  WHERE id = 1""",
             )
         }

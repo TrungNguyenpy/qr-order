@@ -178,6 +178,13 @@ class BillingRepository {
     return _parse(() => RefundResult.fromJson(asMap(data)));
   }
 
+  /// Biên lai hoàn tiền `RF-YYYYMMDD-NNNN` (chỉ giao dịch hoàn SUCCESS; STAFF, MANAGER).
+  /// Giao dịch chưa SUCCESS → 409 `RECEIPT_NOT_AVAILABLE`.
+  Future<RefundReceipt> refundReceipt(int refundId) async {
+    final data = await _client.get(ApiPaths.refundReceipt(refundId));
+    return _parse(() => RefundReceipt.fromJson(asMap(data)));
+  }
+
   /// Lịch sử hoàn tiền của hóa đơn.
   Future<List<Refund>> refunds(int billId) async {
     final data = await _client.get(ApiPaths.billRefunds(billId));

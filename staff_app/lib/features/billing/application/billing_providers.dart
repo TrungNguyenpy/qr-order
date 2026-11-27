@@ -21,6 +21,19 @@ final receiptProvider = FutureProvider.autoDispose.family<PaymentReceipt, int>((
   return ref.watch(billingRepositoryProvider).receipt(paymentId);
 });
 
+/// Biên lai hoàn tiền của một giao dịch hoàn SUCCESS.
+final refundReceiptProvider = FutureProvider.autoDispose
+    .family<RefundReceipt, int>((ref, refundId) {
+      return ref.watch(billingRepositoryProvider).refundReceipt(refundId);
+    });
+
+/// Các giao dịch hoàn tiền của một hóa đơn (mới nhất trước).
+final billRefundsProvider = FutureProvider.autoDispose
+    .family<List<Refund>, int>((ref, billId) async {
+      final list = await ref.watch(billingRepositoryProvider).refunds(billId);
+      return List<Refund>.of(list)..sort((a, b) => b.id.compareTo(a.id));
+    });
+
 /// Mục "Cần xử lý" của hóa đơn (chờ hoàn tiền, chờ hóa đơn thay thế).
 class AttentionController extends LiveListController<AttentionItem> {
   @override

@@ -235,6 +235,10 @@ data class StaffOrderResponse(
     val status: OrderStatus?,
     val batches: List<StaffBatchResponse>,
     val billableTotal: Long,
+    /** Chỉ có khi Order WRITTEN_OFF (BR-P15): số tiền thất thu, lý do và thời điểm ghi nhận. */
+    val shortfallAmount: Long? = null,
+    val writeoffReason: String? = null,
+    val writtenOffAt: OffsetDateTime? = null,
 )
 
 /** Một dòng trên màn hình bếp (KDS, FR-KIT-01): món CONFIRMED/PREPARING, cũ trước. */

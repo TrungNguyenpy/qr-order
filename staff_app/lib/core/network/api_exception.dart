@@ -32,6 +32,18 @@ class ApiErrorCodes {
   static const String permissionDenied = 'PERMISSION_DENIED';
   static const String resourceNotFound = 'RESOURCE_NOT_FOUND';
   static const String validationFailed = 'VALIDATION_FAILED';
+
+  /// Force-close bị chặn khi Bill đang chờ hoàn tiền (BR-S06 i).
+  static const String billVoidPending = 'BILL_VOID_PENDING';
+
+  /// Force-close bị chặn khi Bill còn giao dịch thanh toán PENDING.
+  static const String pendingPaymentExists = 'PENDING_PAYMENT_EXISTS';
+
+  /// Phiên đã ở trạng thái cuối (CLOSED/EXPIRED/FORCE_CLOSED).
+  static const String sessionFinalState = 'SESSION_FINAL_STATE';
+
+  /// Giao dịch hoàn tiền chưa SUCCESS nên chưa có biên lai.
+  static const String receiptNotAvailable = 'RECEIPT_NOT_AVAILABLE';
 }
 
 /// Chi tiết lỗi theo từng trường (validation) của `ApiError.details`.

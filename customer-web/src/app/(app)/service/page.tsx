@@ -9,6 +9,7 @@ import { friendlyError } from "@/lib/errors";
 import { formatVnd } from "@/lib/format";
 import { Banner, Button, EmptyState, ErrorState, Skeleton } from "@/components/ui/primitives";
 import { useSessionStore } from "@/stores/session";
+import { BankTransferCard } from "./BankTransferCard";
 
 const COOLDOWN_MS = 30_000;
 
@@ -100,6 +101,7 @@ export default function ServicePage() {
                 <dd className="tabular-nums">{formatVnd(bill.data.total)}</dd>
               </div>
             </dl>
+            {bill.data.bankTransfer ? <BankTransferCard info={bill.data.bankTransfer} /> : null}
           </div>
         )}
       </section>

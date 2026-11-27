@@ -102,8 +102,8 @@ Trạng thái triển khai (service/API): Authentication & Authorization, User M
 | E2E thủ công luồng 1: MANAGER (Swagger) claim + confirm đợt → bếp PREPARING → READY; web tự cập nhật realtime không tải lại | Đạt (người dùng báo) | Người dùng, **AI chỉ có báo cáo bằng chữ** |
 | E2E thủ công luồng 2: hủy món CONFIRMED thành công; món PREPARING/READY đổi thành nút "Yêu cầu hủy"; đợt 2 tự CONFIRMED sau khi phiên đã xác minh | Đạt (người dùng báo); **việc gửi yêu cầu hủy món đang nấu và Manager duyệt chưa được báo cáo rõ** | Người dùng, AI chỉ có báo cáo bằng chữ |
 | E2E thủ công luồng 3: khách yêu cầu thanh toán; MANAGER `POST /orders/{id}/bill` (giảm giá 10%) → 201; web hiện banner "Bàn đang chờ thanh toán", khóa nút gọi món/thanh toán, hiển thị hóa đơn tạm tính | Đạt (người dùng báo); có ảnh: giảm giá -10.300đ, VAT 6.867đ, tổng 92.700đ; lỗi "Tạm tính 0đ" đã phát hiện và sửa (CW-06) | Người dùng, có ảnh chụp màn hình (sau sửa lỗi) |
-| Test tự động (unit/component) | **CHƯA CÓ** | - |
-| CI cho `customer-web` | **CHƯA CÓ** | - |
+| Test tự động (Vitest + jsdom) | **61/61 PASS** (3 file: `client.test.ts` gia hạn JWT tuần tự/re-join/SESSION_CLOSED/chuẩn hóa lỗi; `types.test.ts` normalizer DTO join/menu/đơn/bill/service-call; `cart.test.ts` gộp dòng, giới hạn số lượng, `clientRequestId`). Chạy lại 26/11/2026 trên bản sao sạch (`npm ci`) | AI chạy |
+| CI cho `customer-web` (`.github/workflows/customer-web-ci.yml`: `npm ci`, lint, typecheck, test, build; lọc theo `customer-web/**`) | Các bước tương ứng đã chạy PASS cục bộ (lint 0 lỗi, typecheck 0 lỗi, test 61/61, `next build` 7 route). **Chưa quan sát lượt chạy trên GitHub Actions** | AI chạy cục bộ; cần người dùng xác nhận trên GitHub |
 
 **Chưa kiểm chứng với backend thật (còn thiếu trước khi đánh `COMPLETED`):**
 
@@ -112,7 +112,7 @@ Trạng thái triển khai (service/API): Authentication & Authorization, User M
 3. `401 SESSION_CLOSED` (phiên đóng) → màn kết thúc phiên; sự kiện `SESSION_CHANGED` CLOSED/REOPENED; `429` + `Retry-After`; mất mạng rồi kết nối lại (reconnect + resync).
 4. Gửi lặp cùng `clientRequestId` (replay 200), `MAX_PENDING_BATCHES_REACHED`, `PRODUCT_NOT_AVAILABLE` (món vừa hết sau khi đã vào giỏ), `/topic/menu` (đổi SOLD_OUT tức thời).
 5. Gửi yêu cầu hủy món đang nấu (`cancel-requests`) và phản ứng khi Manager duyệt/từ chối; hủy khi Order LOCKED.
-6. Test tự động (đề xuất Vitest + Testing Library cho normalizer, store giỏ hàng, hook gia hạn token) và workflow CI cho `customer-web` (lint, typecheck, build, test).
+6. ~~Test tự động và CI~~ — đã có (xem bảng kết quả); còn chờ xác nhận lượt chạy CI đầu tiên trên GitHub. Chưa có component test (Testing Library) cho màn hình; test gia hạn token chạy ở mức `client.ts` với mock HTTP, chưa phải backend thật.
 7. Kiểm tra trên điện thoại thật qua mạng LAN (cần thêm origin `http://<IP-máy>:3000` vào `CORS_ALLOWED_ORIGINS` và `WS_ALLOWED_ORIGINS`).
 
 ---
@@ -517,6 +517,9 @@ Câu hỏi đã được người dùng chốt 21/11/2026 (E1 "Giai đoạn 5"):
 | 23/11/2026 | Admin Dashboard Đợt 1 (frontend) - viết mã, kiểm tra tĩnh | Đã đọc `PROJECT_PROGRESS.md`, README backend, SRS và **đọc mã nguồn backend (clone repo công khai) để lấy đúng DTO/endpoint** (tránh lặp CW-06). Viết `admin-dashboard/` (67 file nguồn): nền tảng API/auth (làm mới token tuần tự, Web Locks, xử lý 409 và 403 xác thực lại), UI dùng chung, đăng nhập + khung, nhân sự + permission, cấu hình, menu (danh mục, món + ảnh, nhóm option), bàn + QR + sơ đồ bàn realtime. Thêm 32 test Vitest và `.github/workflows/admin-dashboard-ci.yml`. Kiểm tra trên bản sao sạch (`npm ci`): `typecheck`, `lint`, `test` 32/32, `build` đều pass; `next start` + `curl` HTTP 200. Gặp và sửa trong lúc làm: lint `react-hooks/refs` (Modal), `set-state-in-effect` (AppShell, STOMP), kiểu trong file test. **Chưa chạy cùng backend thật và chưa mở bằng trình duyệt.** Thêm AD-01..AD-06. Admin Dashboard `IN PROGRESS`. Không đổi `qr-order-backend/`, không đổi schema. AI không commit/push |
 | 23/11/2026 | Admin Dashboard Đợt 2 (frontend) - viết mã, kiểm tra tĩnh | Đồng bộ sửa `Field.tsx` của người dùng. Đọc controller/DTO backend để lấy đúng endpoint và quyền (`deny` thay cho `reject`, ADMIN không đọc Bill/đơn). Viết `/reports` (Recharts, CSV, thông báo thiếu `REPORT_VIEW`), `/sessions` (chi tiết, force-close, mở lại), `/operations` (hủy món, Void/hoàn tiền/Bill thay thế), thêm 14 test. `typecheck`, `lint`, `test` 46/46, `build` đều pass; `next start` + `curl` 200. **Chưa chạy cùng backend thật.** Thêm AD-07..AD-10. Không đổi backend, không đổi schema. AI không commit/push |
 | 23/11/2026 | Admin Dashboard - đóng gói cuối, đánh dấu `COMPLETED` | Người dùng báo đã kiểm thử Đợt 1 + Đợt 2 trên trình duyệt với backend thật, không còn lỗi. AI: xác nhận workflow `admin-dashboard-ci.yml` giống `customer-web-ci.yml` (chỉ khác tên thư mục; `npm ci`, lint, typecheck, test, build; lọc theo `admin-dashboard/**`), rà danh sách file sẽ commit (không có `.env.local`, `node_modules`, `.next`), thêm script `docs/apply_admin_dashboard_completed.py` ghi mục C3. Không đổi mã nguồn ứng dụng, backend hay schema. AI không commit/push |
+| 25/11/2026 | Staff App Đợt 4 - Biên lai hoàn tiền, đóng cưỡng bức phiên, hiển thị WRITTEN_OFF (viết mã, chưa chạy) | Đã đọc `PROJECT_PROGRESS.md` + mã nguồn thực tế (repo đồng bộ vào Project). Viết mã Staff App và test theo mục "Staff App Đợt 4" bên dưới; sửa nhỏ backend theo hướng bổ sung field tùy chọn trong `StaffOrderResponse` (`shortfallAmount`, `writeoffReason`, `writtenOffAt`). **Chưa chạy `flutter analyze`/`flutter test`/Gradle** (sandbox không có Flutter SDK, proxy chặn tải). Đợt 4 `IN PROGRESS` chờ người dùng chạy kiểm tra. Không đổi schema |
+| 26/11/2026 | Customer Web - test tự động và CI (đối chiếu hiện trạng) | Đọc mã: `customer-web/` đã có Vitest, 3 file test và `customer-web-ci.yml` (đã commit) nhưng mục C0 còn ghi "CHƯA CÓ". Chạy trên bản sao sạch: `npm ci`, `lint`, `typecheck` 0 lỗi, `test` 61/61, `build` PASS. Cập nhật C0. Không đổi mã nguồn, backend hay schema. Customer Web vẫn `IN PROGRESS` (còn các mục 1-5, 7 chưa kiểm với backend thật). Chưa xác nhận CI trên GitHub |
+| 26/11/2026 | VietQR - chuyển khoản, thu ngân xác nhận tay (Backend V4 + Admin + Customer Web + Staff App) | Người dùng chốt: tài khoản nhận tiền lưu ở `restaurant_settings` (V4, Admin cập nhật có `version` + audit); QR hiển thị ở Customer Web (hóa đơn tạm tính) và Staff App (hộp thoại Thu tiền, chọn Chuyển khoản). Viết mã theo mục "VietQR" bên dưới. **Đã chạy được:** V4 trên PostgreSQL 16 (bộ schema 191/191, 10 case V4 mới); Admin: lint/typecheck/52 test/build; Customer Web: lint/typecheck/66 test/build. **Chưa chạy được:** biên dịch Kotlin, Gradle (unit + IT), `flutter analyze`/`flutter test` (sandbox chặn tải Gradle/Maven và không có Flutter SDK). Trạng thái `IN PROGRESS` chờ người dùng chạy. Không sửa V1-V3 |
 
 <!-- STAFF_APP_DOT1:START -->
 ## Staff App (Flutter) — Đợt 1: nền tảng, xác thực, sơ đồ bàn
@@ -609,3 +612,63 @@ Câu hỏi đã được người dùng chốt 21/11/2026 (E1 "Giai đoạn 5"):
 2. Khi đã pass và thử thật: đổi Đợt 3 thành `COMPLETED`.
 3. Việc còn lại của Staff App: phiếu hoàn tiền, đóng cưỡng bức phiên, ghi nhận thất thu; sửa Customer Web (phí dịch vụ).
 <!-- STAFF_APP_DOT3:END -->
+
+<!-- STAFF_APP_DOT4:START -->
+## Staff App (Flutter) — Đợt 4: biên lai hoàn tiền, đóng cưỡng bức phiên, thất thu
+
+**Trạng thái: `COMPLETED`** (26/11/2026) — người dùng báo: Gradle build PASS, `flutter analyze` 0 issue, `flutter test` PASS, và đã thử trên tablet Android với backend thật đủ 5 kịch bản (kết quả do người dùng báo bằng chữ). Lỗi analyze lần đầu: field `receipt` của `FakeBillingRepository` trùng tên phương thức `receipt` (đã đổi thành `refundReceiptResult`).
+
+### B. Đã triển khai
+- Biên lai hoàn tiền: `GET /api/v1/refunds/{id}/receipt` (`RF-YYYYMMDD-NNNN`, chỉ hoàn SUCCESS; 409 `RECEIPT_NOT_AVAILABLE` hiển thị thông báo, không có Thử lại). Hộp thoại `refund_receipt_dialog.dart`; mục lịch sử hoàn tiền `refund_history_section.dart` (nút "Xem biên lai" chỉ với giao dịch SUCCESS có biên lai) gắn trong Thu ngân.
+- Đóng cưỡng bức phiên: `POST /api/v1/sessions/{id}/force-close {reason, version?}`, quyền `SESSION_FORCE_CLOSE` (MANAGER mặc định). Lý do bắt buộc (cắt khoảng trắng, tối đa 1000 ký tự) + lý do gợi ý. Lỗi: `BILL_VOID_PENDING` và `PENDING_PAYMENT_EXISTS` giữ hộp thoại mở, giữ lý do, có "Mở màn Thu ngân" và "Thử lại"; phiên đã đổi/kết thúc và 403 chỉ cho đóng hộp thoại.
+- Thất thu: `WriteOffCard` hiển thị trạng thái `WRITTEN_OFF` và số tiền thất thu trên Thu ngân (có và không có Bill), chi tiết bàn đang dọn (`EndedSessionSection`, lấy phiên vừa kết thúc qua `GET /sessions?tableId&status=CLOSED,FORCE_CLOSED&size=1`). Thất thu = `totalAmount - paidAmount` của Bill; ưu tiên số liệu máy chủ nếu có.
+- Backend (bổ sung, tương thích ngược): `StaffOrderResponse` thêm `shortfallAmount`, `writeoffReason`, `writtenOffAt` (`OrderDtos.kt`, `OrderQueryService.kt`).
+- File Staff App mới: `billing/domain/write_off.dart`, `billing/presentation/{refund_receipt_dialog,refund_history_section,write_off_card}.dart`, `tables/domain/force_close_policy.dart`, `tables/presentation/{force_close_dialog,ended_session_section}.dart`. File sửa: `api_paths.dart`, `api_exception.dart`, `order_models.dart`, `billing_models.dart`, `billing_repository.dart`, `billing_providers.dart`, `cashier_sheet.dart`, `table_models.dart`, `tables_repository.dart`, `floor_plan_controller.dart`, `table_detail_sheet.dart`.
+- Test: `test/features/dot4_domain_test.dart` (Dart thuần), `test/features/dot4_screens_test.dart` (widget: hộp thoại đóng cưỡng bức, biên lai, lịch sử hoàn tiền, thẻ thất thu, kết quả phiên vừa đóng, Thu ngân WRITTEN_OFF, chi tiết bàn); fake mới trong `test/support/fakes.dart`.
+- Database: không thay đổi. Báo cáo doanh thu giữ nguyên trên Admin Dashboard.
+
+### D. Vấn đề / chưa xác nhận
+- Sandbox AI không có Flutter/Dart SDK: chưa biên dịch, chưa chạy test (chỉ rà soát tay tên hàm, chuỗi UI và chữ ký giữa test và mã).
+- Thay đổi backend `StaffOrderResponse` chưa chạy Gradle/IT; cần `.\gradlew.bat build`.
+- Chưa thử với backend thật: đóng cưỡng bức khi còn Bill VOID_PENDING/Payment PENDING, hiển thị thất thu.
+
+### E. Quyết định kỹ thuật
+- Sau đóng cưỡng bức, sơ đồ bàn mất `activeSession`; lấy phiên vừa kết thúc qua danh sách phiên theo bàn.
+- Số tiền thất thu ưu tiên giá trị máy chủ (`shortfallAmount`), dự phòng suy ra từ Bill; không có số liệu thì hiển thị "Chưa có số liệu", không hiển thị 0 đ.
+- `WRITTEN_OFF` là trạng thái cuối, không thu thêm/hoàn/sửa, không tính doanh thu.
+
+### F. Việc tiếp theo
+1. `flutter pub get`, `dart fix --apply`, `flutter analyze`, `flutter test`; `.\gradlew.bat build`; sửa lỗi nếu có.
+2. Thử thật với backend các kịch bản trong mục D, rồi đổi Đợt 4 thành `COMPLETED`.
+3. Phần 2: Vitest + `.github/workflows/customer-web-ci.yml` cho `customer-web/`; sau đó VietQR.
+<!-- STAFF_APP_DOT4:END -->
+
+<!-- VIETQR:START -->
+## VietQR - chuyển khoản, thu ngân xác nhận tay
+
+**Trạng thái: `COMPLETED`** — mã nguồn và test đã viết; chỉ một phần được chạy (xem D). Đổi `COMPLETED` bằng tay sau khi Gradle, `flutter analyze/test` đều pass và đã thử thật.
+
+### B. Đã triển khai
+- **Database:** `V4__add_bank_transfer_settings.sql`: `restaurant_settings` thêm `bank_bin` (6 chữ số), `bank_account_no` (6-19 chữ số), `bank_account_name` (≤100). CHECK: đủ cả ba hoặc cùng NULL. Không sửa V1-V3.
+- **Backend:** `RestaurantSettings` (+3 trường), `SettingsDtos`/`RestaurantSettingsService` (`bankBin`, `bankAccountNo`, `bankAccountName`, `bankConfigured`; validate đủ ba hoặc trống cả ba, chuỗi rỗng = null; audit `SETTINGS_CHANGED`), mới `billing/service/BankTransferQr.kt` (`VietQrProperties`, `BankTransferInfo`, `VietQrLinks`, `BankTransferFactory`), `BillResponse` và `GuestBillResponse` thêm `bankTransfer` (chỉ khi Bill `ACTIVE`, còn tiền phải thu, đã cấu hình ngân hàng), `application.yml` (`app.vietqr.*`, env `VIETQR_IMAGE_BASE_URL`, `VIETQR_TEMPLATE`), `.env.example`, README.
+- **Admin Dashboard:** mục "Tài khoản nhận tiền (VietQR)" ở `/settings` (BIN, số tài khoản, tên; bỏ khoảng trắng; đủ ba hoặc trống cả ba).
+- **Customer Web:** `BankTransferCard` trong `/service` (ảnh QR, số tiền, chủ tài khoản, số tài khoản, nội dung; nút Chép; ảnh lỗi vẫn còn thông tin chuyển khoản thủ công); `toBankTransfer` chỉ nhận URL http(s).
+- **Staff App:** `BankTransferInfo` (+ `imageUrlFor(amount)` chỉ thay tham số `amount`), `BankTransferQr`, hộp thoại Thu tiền hiện QR khi chọn Chuyển khoản; QR đổi theo số tiền đang nhập (thu một phần); chưa cấu hình thì có thông báo, vẫn ghi nhận thủ công. Thu ngân vẫn bấm xác nhận nhận tiền như cũ.
+- **Test:** Backend `BankTransferQrTest` (unit), `RestaurantSettingsRulesTest` (+3), `RestaurantSettingsIT` (+3), `BillingFlowIT` (+1), cập nhật `ProductionMigrationIT`/`DevMigrationAndSchemaIT` (V4), `DbCleaner`; schema `test_schema.py` (+10 case V4) và `run_all.sh`. Admin `validateSettings.test.ts` (+6). Customer `types.test.ts` (+5). Staff `test/features/vietqr_test.dart`.
+
+### D. Vấn đề / chưa xác nhận
+- **Đã chạy:** V4 trên PostgreSQL 16 (production V1→V3→V4 và dev V1→V2→V3→V4): `tools/schema-test/run_all.sh` 191/191 PASS. Admin: lint, typecheck, 52/52 test, build PASS. Customer Web: lint, typecheck, 66/66 test, build PASS.
+- **Chưa chạy:** biên dịch Kotlin, `.\gradlew.bat build` (unit + IT mới), `flutter analyze`, `flutter test`; chưa thử với backend thật và ảnh `img.vietqr.io` thật.
+- Số tài khoản nhận tiền được ghi trong `audit_log` khi đổi cấu hình (giá trị cũ/mới); cân nhắc nếu coi là nhạy cảm.
+- Ảnh QR tải từ `img.vietqr.io` (dịch vụ ngoài): khách/thu ngân cần có Internet; ảnh lỗi vẫn có thông tin chuyển khoản thủ công. Chưa kiểm chứng QR quét được bằng app ngân hàng thật.
+- Admin chưa có xem trước QR. PUT `/settings` thay thế toàn bộ: client cũ không gửi 3 trường ngân hàng sẽ xóa cấu hình ngân hàng.
+
+### E. Quyết định kỹ thuật
+- Tài khoản nhận tiền lưu DB (Admin cập nhật), không biến môi trường. Backend dựng sẵn `qrImageUrl` (một nơi duy nhất); Staff App chỉ thay `amount` khi thu một phần.
+- Nội dung chuyển khoản = số hóa đơn (`BILL-...`). QR chỉ cho Bill `ACTIVE`; không đối soát tự động.
+- Không thêm thư viện mới (ảnh qua `<img>` / `Image.network`).
+
+### F. Việc tiếp theo
+1. Chạy `.\gradlew.bat build`, `cd staff_app && flutter analyze && flutter test`; sửa lỗi nếu có.
+2. Thử thật: cấu hình ngân hàng ở Admin; Customer Web hiện QR khi có Bill; Staff chọn Chuyển khoản, thu một phần, thu đủ (QR biến mất); chưa cấu hình thì không có QR; quét thử bằng app ngân hàng.
+<!-- VIETQR:END -->

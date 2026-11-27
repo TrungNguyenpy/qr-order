@@ -24,11 +24,11 @@ class DevMigrationAndSchemaIT : IntegrationTestBase() {
     lateinit var environment: Environment
 
     @Test
-    fun `flyway applied V1, V2 seed, V3 successfully`() {
+    fun `flyway applied V1, V2 seed, V3, V4 successfully`() {
         val history = jdbc.queryForList(
             "SELECT version, success FROM flyway_schema_history WHERE version IS NOT NULL ORDER BY installed_rank",
         )
-        assertEquals(listOf("1", "2", "3"), history.map { it["version"] })
+        assertEquals(listOf("1", "2", "3", "4"), history.map { it["version"] })
         assertTrue(history.all { it["success"] == true })
     }
 

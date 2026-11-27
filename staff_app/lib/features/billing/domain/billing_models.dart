@@ -158,6 +158,65 @@ class Payment {
   final DateTime? confirmedAt;
 }
 
+/// Thông tin chuyển khoản VietQR của một Bill còn tiền phải thu (backend `BankTransferInfo`).
+/// Chỉ có khi nhà hàng đã cấu hình tài khoản nhận tiền và Bill đang hiệu lực.
+class BankTransferInfo {
+  const BankTransferInfo({
+    required this.bankBin,
+    required this.accountNo,
+    required this.accountName,
+    required this.amount,
+    required this.transferNote,
+    required this.qrImageUrl,
+  });
+
+  /// Null khi thiếu số tài khoản hoặc URL ảnh không phải http(s): không hiển thị QR còn hơn hiển thị sai.
+  static BankTransferInfo? tryParse(Object? raw) {
+    if (raw is! Map) return null;
+    final json = asMap(raw);
+    final url = asString(json['qrImageUrl']);
+    final accountNo = asString(json['accountNo']);
+    final uri = Uri.tryParse(url);
+    final isWeb = uri != null && (uri.scheme == 'https' || uri.scheme == 'http');
+    if (!isWeb || accountNo.isEmpty) return null;
+    return BankTransferInfo(
+      bankBin: asString(json['bankBin']),
+      accountNo: accountNo,
+      accountName: asString(json['accountName']),
+      amount: asInt(json['amount']),
+      transferNote: asString(json['transferNote']),
+      qrImageUrl: url,
+    );
+  }
+
+  final String bankBin;
+  final String accountNo;
+  final String accountName;
+
+  /// Số tiền còn phải thu mà [qrImageUrl] đã gắn sẵn.
+  final int amount;
+
+  /// Nội dung chuyển khoản = số hóa đơn.
+  final String transferNote;
+  final String qrImageUrl;
+
+  static final RegExp _amountParam = RegExp(r'([?&])amount=[^&#]*');
+
+  /// URL ảnh QR với số tiền khác (thu một phần). Chỉ thay tham số `amount`, giữ nguyên phần còn lại
+  /// (nội dung, tên chủ tài khoản đã mã hóa) do máy chủ dựng.
+  String imageUrlFor(int newAmount) {
+    if (newAmount == amount) return qrImageUrl;
+    if (_amountParam.hasMatch(qrImageUrl)) {
+      return qrImageUrl.replaceFirstMapped(
+        _amountParam,
+        (match) => '${match[1]}amount=$newAmount',
+      );
+    }
+    final separator = qrImageUrl.contains('?') ? '&' : '?';
+    return '$qrImageUrl${separator}amount=$newAmount';
+  }
+}
+
 /// Bill cho nhân viên (backend `BillResponse`); tiền là snapshot, số nguyên VND.
 class Bill {
   const Bill({
@@ -188,6 +247,8 @@ class Bill {
     this.refundPendingAmount = 0,
     this.remainingRefundable = 0,
     this.voidReason,
+    this.writtenOffAt,
+    this.bankTransfer,
   });
 
   factory Bill.fromJson(Map<String, dynamic> json) {
@@ -225,6 +286,8 @@ class Bill {
       refundPendingAmount: asInt(json['refundPendingAmount']),
       remainingRefundable: asInt(json['remainingRefundable']),
       voidReason: asStringOrNull(json['voidReason']),
+      writtenOffAt: asDateTime(json['writtenOffAt']),
+      bankTransfer: BankTransferInfo.tryParse(json['bankTransfer']),
     );
   }
 
@@ -257,6 +320,23 @@ class Bill {
   final int refundPendingAmount;
   final int remainingRefundable;
   final String? voidReason;
+
+  /// Thời điểm ghi nhận thất thu khi force-close (chỉ Bill WRITTEN_OFF).
+  final DateTime? writtenOffAt;
+
+  /// VietQR cho số tiền còn phải thu; null = chưa cấu hình ngân hàng, đã thu đủ hoặc máy chủ cũ.
+  final BankTransferInfo? bankTransfer;
+
+  /// Hóa đơn đã được ghi nhận thất thu: trạng thái cuối, không thu/hoàn/sửa (P-2).
+  bool get isWrittenOff => status == BillStatus.writtenOff;
+
+  /// Thất thu của Bill WRITTEN_OFF = Tổng - tiền thu ròng (BR-P15); luôn >= 0.
+  /// `paidAmount` là tiền thu ròng (TPS - TRS). Null khi Bill chưa bị ghi nhận thất thu.
+  int? get shortfallAmount {
+    if (!isWrittenOff) return null;
+    final value = totalAmount - paidAmount;
+    return value < 0 ? 0 : value;
+  }
 
   /// Chờ hoàn tiền sau yêu cầu Void (BR-P09).
   bool get isVoidPending => status == BillStatus.voidPending;
@@ -420,6 +500,7 @@ class Refund {
     this.receiptNumber,
     this.failureReason,
     this.createdAt,
+    this.confirmedAt,
   });
 
   factory Refund.fromJson(Map<String, dynamic> json) {
@@ -436,6 +517,7 @@ class Refund {
       reason: asString(json['reason']),
       failureReason: asStringOrNull(json['failureReason']),
       createdAt: asDateTime(json['createdAt']),
+      confirmedAt: asDateTime(json['confirmedAt']),
     );
   }
 
@@ -448,6 +530,11 @@ class Refund {
   final String reason;
   final String? failureReason;
   final DateTime? createdAt;
+  final DateTime? confirmedAt;
+
+  /// Có biên lai để xem: chỉ giao dịch hoàn SUCCESS đã được cấp mã `RF-`.
+  bool get hasReceipt =>
+      status == TransactionStatus.success && (receiptNumber ?? '').isNotEmpty;
 }
 
 /// Kết quả ghi nhận/xác nhận hoàn tiền (backend `RefundResultResponse`).
@@ -478,6 +565,96 @@ class RefundResult {
   /// Lần hoàn này đã đủ: Bill chuyển VOIDED.
   final bool voidCompleted;
   final bool replayed;
+}
+
+/// Dữ liệu biên lai hoàn tiền `RF-YYYYMMDD-NNNN` (backend `RefundReceiptResponse`).
+/// Chỉ có với giao dịch hoàn SUCCESS.
+class RefundReceipt {
+  const RefundReceipt({
+    required this.restaurantName,
+    required this.receiptNumber,
+    required this.billNumber,
+    required this.billStatus,
+    required this.tableCode,
+    required this.method,
+    required this.amount,
+    required this.reason,
+    required this.billTotalAmount,
+    required this.totalPaidSuccess,
+    required this.refundedBefore,
+    required this.refundedAfter,
+    required this.remainingToRefund,
+    required this.footer,
+    this.address,
+    this.phone,
+    this.taxCode,
+    this.issuedAt,
+    this.tableName,
+    this.managerName,
+    this.voidReason,
+  });
+
+  factory RefundReceipt.fromJson(Map<String, dynamic> json) {
+    final number = asStringOrNull(json['receiptNumber']);
+    if (number == null) {
+      throw const FormatException('Biên lai hoàn tiền không hợp lệ.');
+    }
+    final header = asMap(json['header']);
+    return RefundReceipt(
+      restaurantName: asString(header['restaurantName']),
+      address: asStringOrNull(header['address']),
+      phone: asStringOrNull(header['phone']),
+      taxCode: asStringOrNull(header['taxCode']),
+      receiptNumber: number,
+      issuedAt: asDateTime(json['issuedAt']),
+      billNumber: asString(json['billNumber']),
+      billStatus: BillStatus.parse(json['billStatus']) ?? BillStatus.active,
+      tableCode: asString(json['tableCode']),
+      tableName: asStringOrNull(json['tableName']),
+      managerName: asStringOrNull(json['managerName']),
+      method: PaymentMethod.parse(json['method']) ?? PaymentMethod.other,
+      amount: asInt(json['amount']),
+      reason: asString(json['reason']),
+      voidReason: asStringOrNull(json['voidReason']),
+      billTotalAmount: asInt(json['billTotalAmount']),
+      totalPaidSuccess: asInt(json['totalPaidSuccess']),
+      refundedBefore: asInt(json['refundedBefore']),
+      refundedAfter: asInt(json['refundedAfter']),
+      remainingToRefund: asInt(json['remainingToRefund']),
+      footer: asString(json['footer']),
+    );
+  }
+
+  final String restaurantName;
+  final String? address;
+  final String? phone;
+  final String? taxCode;
+  final String receiptNumber;
+  final DateTime? issuedAt;
+  final String billNumber;
+  final BillStatus billStatus;
+  final String tableCode;
+  final String? tableName;
+  final String? managerName;
+  final PaymentMethod method;
+
+  /// Số tiền của lần hoàn này.
+  final int amount;
+  final String reason;
+  final String? voidReason;
+  final int billTotalAmount;
+
+  /// Tổng tiền đã thu thành công của Bill (TPS).
+  final int totalPaidSuccess;
+
+  /// Tổng đã hoàn trước / sau lần hoàn này (theo thứ tự xác nhận).
+  final int refundedBefore;
+  final int refundedAfter;
+  final int remainingToRefund;
+  final String footer;
+
+  /// Đã hoàn đủ toàn bộ tiền đã thu của Bill.
+  bool get isFullyRefunded => remainingToRefund <= 0;
 }
 
 /// Loại mục "Cần xử lý" của Manager.

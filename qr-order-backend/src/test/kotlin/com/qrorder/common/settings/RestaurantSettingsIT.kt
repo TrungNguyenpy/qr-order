@@ -7,6 +7,7 @@ import com.qrorder.support.ApiTestClient.Companion.isError
 import com.qrorder.support.IntegrationTestBase
 import com.qrorder.support.LoggedInUser
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import org.hamcrest.Matchers.hasItem
@@ -156,6 +157,53 @@ class RestaurantSettingsIT : IntegrationTestBase() {
         assertEquals(20L, fx.count("SELECT max_item_quantity FROM restaurant_settings WHERE id = 1"))
         assertEquals(2L, dbVersion())
         assertEquals(1, api.auditRows("SETTINGS_CHANGED").size)
+    }
+
+    @Test
+    fun `bank account - saved, returned, audited, and cleared by sending all three empty`() {
+        put("bankBin" to "970436", "bankAccountNo" to "0011001234567", "bankAccountName" to "NGUYEN VAN A")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.bankConfigured").value(true))
+            .andExpect(jsonPath("$.data.bankBin").value("970436"))
+            .andExpect(jsonPath("$.data.bankAccountNo").value("0011001234567"))
+            .andExpect(jsonPath("$.data.bankAccountName").value("NGUYEN VAN A"))
+            .andExpect(jsonPath("$.data.version").value(2))
+        val audit = api.auditRows("SETTINGS_CHANGED").single()
+        val new = api.jsonOf(audit["new_value"])
+        assertEquals(setOf("bankBin", "bankAccountNo", "bankAccountName"), new.fieldNames().asSequence().toSet())
+
+        // Gửi lại đúng giá trị: không đổi gì. Gửi rỗng cả ba: xóa cấu hình.
+        put("bankBin" to "970436", "bankAccountNo" to "0011001234567", "bankAccountName" to "NGUYEN VAN A", "version" to 2)
+            .andExpect(status().isOk).andExpect(jsonPath("$.data.version").value(2))
+        put("bankBin" to "", "bankAccountNo" to null, "bankAccountName" to " ", "version" to 2)
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.bankConfigured").value(false))
+            .andExpect(jsonPath("$.data.bankBin").doesNotExist())
+            .andExpect(jsonPath("$.data.version").value(3))
+        assertNull(jdbc.queryForObject("SELECT bank_account_no FROM restaurant_settings WHERE id = 1", String::class.java))
+    }
+
+    @Test
+    fun `bank account - partial or malformed input is rejected with field errors and changes nothing`() {
+        put("bankBin" to "970436").isError(400, "VALIDATION_FAILED")
+            .andExpect(jsonPath("$.error.details[*].field", hasItem("bankAccountNo")))
+        put("bankBin" to "9704", "bankAccountNo" to "0011001234567", "bankAccountName" to "A")
+            .isError(400, "VALIDATION_FAILED")
+            .andExpect(jsonPath("$.error.details[*].field", hasItem("bankBin")))
+        put("bankBin" to "970436", "bankAccountNo" to "12ab56", "bankAccountName" to "A")
+            .isError(400, "VALIDATION_FAILED")
+            .andExpect(jsonPath("$.error.details[*].field", hasItem("bankAccountNo")))
+        assertEquals(1L, dbVersion())
+    }
+
+    @Test
+    fun `database CHECK also rejects a half-configured bank account (V4)`() {
+        assertFailsWith<org.springframework.dao.DataIntegrityViolationException> {
+            jdbc.update("UPDATE restaurant_settings SET bank_bin = '970436'")
+        }
+        assertFailsWith<org.springframework.dao.DataIntegrityViolationException> {
+            jdbc.update("UPDATE restaurant_settings SET bank_bin = 'abc', bank_account_no = '123456', bank_account_name = 'A'")
+        }
     }
 
     @Test

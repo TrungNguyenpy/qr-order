@@ -28,6 +28,11 @@ data class RestaurantSettingsResponse(
     val orderConfirmationMode: OrderConfirmationMode,
     val requireTablePin: Boolean,
     val cleaningAutoRelease: Boolean,
+    /** Tài khoản nhận tiền VietQR; null = chưa cấu hình (không hiển thị mã QR). */
+    val bankBin: String?,
+    val bankAccountNo: String?,
+    val bankAccountName: String?,
+    val bankConfigured: Boolean,
     val timezone: String,
     val moneyRoundingMode: String,
     val pricesIncludeVat: Boolean,
@@ -51,6 +56,10 @@ data class RestaurantSettingsResponse(
             orderConfirmationMode = s.orderConfirmationMode,
             requireTablePin = s.requireTablePin,
             cleaningAutoRelease = s.cleaningAutoRelease,
+            bankBin = s.bankBin,
+            bankAccountNo = s.bankAccountNo,
+            bankAccountName = s.bankAccountName,
+            bankConfigured = s.bankBin != null,
             timezone = s.timezone,
             moneyRoundingMode = s.moneyRoundingMode,
             pricesIncludeVat = s.pricesIncludeVat,
@@ -103,6 +112,14 @@ data class UpdateRestaurantSettingsRequest(
     val requireTablePin: Boolean? = null,
     @field:NotNull(message = "Bắt buộc")
     val cleaningAutoRelease: Boolean? = null,
+
+    /**
+     * Tài khoản nhận tiền VietQR. Gửi cả ba hoặc để trống cả ba (xóa cấu hình). Chuỗi rỗng coi như null. Định dạng kiểm tra ở RestaurantSettingsRules (sau khi trim).
+     * Vì PUT thay thế toàn bộ, client phải gửi lại giá trị hiện có nếu không muốn xóa.
+     */
+    val bankBin: String? = null,
+    val bankAccountNo: String? = null,
+    val bankAccountName: String? = null,
 
     @field:NotNull(message = "Thiếu version (optimistic locking)")
     @field:PositiveOrZero(message = "version không hợp lệ")

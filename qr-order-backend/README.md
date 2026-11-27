@@ -50,11 +50,11 @@ Dùng `docker compose` (không dùng `./gradlew bootRun` trần: nó không có 
 
 | Profile | Flyway locations | Ghi chú |
 | --- | --- | --- |
-| `dev` | `db/migration` + `db/seed-dev` (V1 → V2 → V3) | Seed VAT 8% thử nghiệm, 11 bàn, QR dev `/t/dev-qr-T01`..., menu mẫu; không có tài khoản (ADMIN đầu tiên tạo từ `INITIAL_ADMIN_*`) |
-| `prod` | chỉ `db/migration` (V1 → V3) | `ddl-auto: validate`, OpenAPI tắt (bật bằng `OPENAPI_ENABLED=true`) |
+| `dev` | `db/migration` + `db/seed-dev` (V1 → V2 → V3 → V4) | Seed VAT 8% thử nghiệm, 11 bàn, QR dev `/t/dev-qr-T01`..., menu mẫu; không có tài khoản (ADMIN đầu tiên tạo từ `INITIAL_ADMIN_*`) |
+| `prod` | chỉ `db/migration` (V1 → V3 → V4) | `ddl-auto: validate`, OpenAPI tắt (bật bằng `OPENAPI_ENABLED=true`) |
 | `test` | như dev | Dùng trong integration test (Testcontainers) |
 
-Hibernate luôn ở chế độ `validate`: schema chỉ do Flyway quản lý. Migration mới đánh số từ **V4**, không sửa V1–V3.
+Hibernate luôn ở chế độ `validate`: schema chỉ do Flyway quản lý. Migration mới đánh số từ **V5**, không sửa V1–V4.
 
 ## Kiểm thử
 
@@ -110,7 +110,7 @@ Integration test không dùng `@Transactional` rollback: trigger DEFERRABLE ch�
 
 Công cụ phụ (không cần JVM):
 
-- `tools/schema-test/run_all.sh`: chạy V1/V2/V3 bằng psql và 181 case schema (Python + psycopg).
+- `tools/schema-test/run_all.sh`: chạy V1/V2/V3/V4 bằng psql và 191 case schema (Python + psycopg).
 - `tools/verify/check_entity_mapping.py`: đối chiếu tĩnh 26 entity Kotlin với catalog PostgreSQL.
 - `tools/verify/phase1_sql_check.py`: 26 case cho các câu SQL Giai đoạn 1 (UPDATE gốc, audit, settings, DbCleaner) trên database dev V1→V2→V3.
 - `tools/verify/concurrent_admin_demote.py`: hai ADMIN hạ quyền nhau đồng thời (20 vòng), kiểm tra BR-A09 và không deadlock.
@@ -450,3 +450,14 @@ Tham số khoảng thời gian `from`, `to` (tùy chọn): dạng ngày `yyyy-MM
 **Audit mới:** `ORDER_ITEM_ADDED_BY_STAFF` (entity `order_batch`), `ORDER_ITEM_QUANTITY_CHANGED`, `ORDER_ITEM_CANCELLED_BY_STAFF`, `REPORT_EXPORTED` (entity `report`). **WebSocket:** `ORDER_CHANGED` thêm `change = ITEM_QUANTITY_CHANGED`. CORS expose thêm `Content-Disposition`.
 
 **Hạn chế đã biết:** chưa có index trên `orders.paid_at` và `order_item.served_at` (top-products, service-time quét theo khoảng; không V4); nhân viên chưa tạo yêu cầu hủy hộ khách cho món PREPARING/READY (BE-39).
+
+---
+
+## VietQR - chuyển khoản, thu ngân xác nhận tay (V4)
+
+Hiển thị mã VietQR để khách chuyển khoản. **Không đối soát tự động**: thu ngân vẫn ghi nhận/xác nhận đã nhận tiền như luồng thanh toán hiện có.
+
+- **Cấu hình (Admin):** `GET/PUT /api/v1/settings` có thêm `bankBin` (6 chữ số), `bankAccountNo` (6-19 chữ số), `bankAccountName` (tối đa 100 ký tự) và `bankConfigured` (chỉ đọc). Đủ cả ba hoặc để trống cả ba (xóa cấu hình); chuỗi rỗng coi như null. PUT thay thế toàn bộ nên client phải gửi lại giá trị hiện có. Lỗi: 400 `VALIDATION_FAILED` kèm `details[].field`. Thay đổi ghi audit `SETTINGS_CHANGED` (giá trị cũ/mới của các trường đổi).
+- **Bill:** `BillResponse` (nhân viên) và `GuestBillResponse` (`GET /api/v1/guest/bill`) có thêm `bankTransfer` = `{bankBin, accountNo, accountName, amount, transferNote, qrImageUrl}`. Chỉ có khi Bill `ACTIVE`, còn tiền phải thu (nhân viên: `remainingAmount`; khách: phần chưa thu) và đã cấu hình ngân hàng; ngược lại null/không có. `transferNote` = số hóa đơn. Nhân viên thu một phần có thể thay tham số `amount` trong `qrImageUrl`.
+- **Cấu hình ảnh QR:** `VIETQR_IMAGE_BASE_URL` (mặc định `https://img.vietqr.io/image`), `VIETQR_TEMPLATE` (mặc định `compact2`) -> `app.vietqr.*`. Backend chỉ ghép URL, không gọi dịch vụ ngoài.
+- **Database:** `V4__add_bank_transfer_settings.sql` thêm 3 cột vào `restaurant_settings` + CHECK (đủ cả ba hoặc cùng NULL, BIN 6 chữ số, số tài khoản 6-19 chữ số, tên không rỗng). Không mã lỗi mới.

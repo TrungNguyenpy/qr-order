@@ -13,7 +13,7 @@ import org.springframework.test.context.ActiveProfiles
 
 /**
  * Đường PRODUCTION: chỉ `classpath:db/migration` (giống application-prod.yml) trên database trống:
- * Flyway áp dụng V1 rồi V3 (khoảng trống V2 là seed dev), không có dữ liệu mẫu, vat_rate NULL,
+ * Flyway áp dụng V1, V3 rồi V4 (khoảng trống V2 là seed dev), không có dữ liệu mẫu, vat_rate NULL,
  * và Hibernate validate vẫn PASS. Context và container riêng (thuộc tính khác context dev).
  */
 @SpringBootTest(properties = ["spring.flyway.locations=classpath:db/migration"])
@@ -28,12 +28,12 @@ class ProductionMigrationIT {
     lateinit var entityManagerFactory: EntityManagerFactory
 
     @Test
-    fun `production path applies V1 then V3 without seed`() {
+    fun `production path applies V1, V3 then V4 without seed`() {
         val versions = jdbc.queryForList(
             "SELECT version FROM flyway_schema_history WHERE version IS NOT NULL AND success ORDER BY installed_rank",
             String::class.java,
         )
-        assertEquals(listOf("1", "3"), versions)
+        assertEquals(listOf("1", "3", "4"), versions)
         assertEquals(DevMigrationAndSchemaIT.EXPECTED_TABLES, DevMigrationAndSchemaIT.tablesInDatabase(jdbc))
         assertEquals(26, entityManagerFactory.metamodel.entities.size)
     }

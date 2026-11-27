@@ -236,6 +236,9 @@ class SessionOrder {
     required this.billableTotal,
     this.orderId,
     this.status,
+    this.shortfallAmount,
+    this.writeoffReason,
+    this.writtenOffAt,
   });
 
   factory SessionOrder.fromJson(Map<String, dynamic> json) => SessionOrder(
@@ -244,6 +247,10 @@ class SessionOrder {
     status: OrderStatus.parse(json['status']),
     batches: asMapList(json['batches']).map(OrderBatch.fromJson).toList(),
     billableTotal: asInt(json['billableTotal']),
+    // Chỉ có khi Order WRITTEN_OFF (backend bổ sung ở Đợt 4); máy chủ cũ không gửi.
+    shortfallAmount: asIntOrNull(json['shortfallAmount']),
+    writeoffReason: asStringOrNull(json['writeoffReason']),
+    writtenOffAt: asDateTime(json['writtenOffAt']),
   );
 
   /// `orderId` null = phiên chưa có Order (khách chưa gọi món).
@@ -253,7 +260,15 @@ class SessionOrder {
   final List<OrderBatch> batches;
   final int billableTotal;
 
+  /// Số tiền thất thu của Order WRITTEN_OFF (BR-P15); null khi không có số liệu.
+  final int? shortfallAmount;
+  final String? writeoffReason;
+  final DateTime? writtenOffAt;
+
   bool get isEmpty => batches.isEmpty;
+
+  /// Order đã được ghi nhận thất thu (trạng thái cuối, P-2).
+  bool get isWrittenOff => status == OrderStatus.writtenOff;
 }
 
 /// Chỉ gọi món hộ / sửa món khi Order chưa có hoặc đang mở (LOCKED/PAID thì không thêm món).

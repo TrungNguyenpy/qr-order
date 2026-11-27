@@ -48,4 +48,49 @@ class TablesRepository {
       throw ApiException.unexpected();
     }
   }
+
+  /// Đóng cưỡng bức phiên: `POST /api/v1/sessions/{id}/force-close {reason, version?}`
+  /// (cần `SESSION_FORCE_CLOSE`, lý do bắt buộc). Backend tự quyết định kết quả:
+  /// ghi nhận thất thu (WRITTEN_OFF) khi còn món tính tiền chưa thu đủ, VOIDED khi
+  /// không có món tính tiền, giữ PAID khi Bill đã thu đủ; bàn chuyển Đang dọn.
+  /// Từ chối `BILL_VOID_PENDING` / `PENDING_PAYMENT_EXISTS` (xem [ApiException.code]).
+  Future<StaffSession> forceClose(
+    int sessionId, {
+    required String reason,
+    int? version,
+  }) async {
+    final data = await _client.post(
+      ApiPaths.sessionForceClose(sessionId),
+      data: <String, dynamic>{
+        'reason': reason.trim(),
+        if (version != null) 'version': version,
+      },
+    );
+    try {
+      return StaffSession.fromJson(asMap(data));
+    } on FormatException {
+      throw ApiException.unexpected();
+    }
+  }
+
+  /// Phiên gần nhất của bàn đã kết thúc bình thường (CLOSED) hoặc bị đóng cưỡng
+  /// bức (FORCE_CLOSED); null khi bàn chưa có phiên nào như vậy.
+  /// `GET /api/v1/sessions?tableId=&status=CLOSED,FORCE_CLOSED&size=1` (mới mở trước).
+  Future<StaffSession?> latestEndedSession(int tableId) async {
+    final data = await _client.get(
+      ApiPaths.sessions,
+      query: <String, dynamic>{
+        'tableId': tableId,
+        'status': 'CLOSED,FORCE_CLOSED',
+        'page': 0,
+        'size': 1,
+      },
+    );
+    try {
+      final items = asMapList(asMap(data)['items']);
+      return items.isEmpty ? null : StaffSession.fromJson(items.first);
+    } on FormatException {
+      throw ApiException.unexpected();
+    }
+  }
 }

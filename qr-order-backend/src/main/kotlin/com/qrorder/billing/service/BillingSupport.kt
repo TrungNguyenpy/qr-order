@@ -146,6 +146,7 @@ class BillViewMapper(
     private val optionRepository: OrderItemOptionRepository,
     private val paymentRepository: PaymentTransactionRepository,
     private val refundRepository: RefundTransactionRepository,
+    private val bankTransferFactory: BankTransferFactory,
 ) {
     fun money(billId: Long): MoneySummary =
         MoneySummary.of(paymentRepository.findAllByBillIdOrderByIdAsc(billId), refundRepository.findAllByBillIdOrderByIdAsc(billId))
@@ -193,6 +194,7 @@ class BillViewMapper(
             payments = payments.map(::payment), version = bill.version,
             refundedAmount = money.trs, refundPendingAmount = money.trp, remainingRefundable = money.remainingRefundable,
             voidRequestedAt = bill.voidRequestedAt, orderNeedsAttention = order.needsAttention, refunds = refunds.map(::refund),
+            bankTransfer = bankTransferFor(bill, money.remaining(bill.totalAmount)),
         )
     }
 
@@ -216,8 +218,13 @@ class BillViewMapper(
             serviceFeeAmount = bill.serviceFeeAmount, totalAmount = bill.totalAmount, vatRate = bill.vatRate, vatAmount = bill.vatAmount,
             paidAmount = money.netCollected, remainingAmount = money.outstanding(bill.totalAmount), lines = lines(bill.orderId),
             createdAt = bill.createdAt,
+            bankTransfer = bankTransferFor(bill, money.outstanding(bill.totalAmount)),
         )
     }
+
+    /** VietQR chỉ cho Bill đang hiệu lực (ACTIVE): Bill chờ Void, đã Void hoặc thất thu không nhận thêm tiền. */
+    private fun bankTransferFor(bill: Bill, amount: Long): BankTransferInfo? =
+        if (bill.status == BillStatus.ACTIVE) bankTransferFactory.forOutstanding(requireNotNull(bill.billNumber), amount) else null
 
     fun summary(bill: Bill, money: MoneySummary = money(requireNotNull(bill.id))) = BillSummaryResponse(
         id = requireNotNull(bill.id), billNumber = requireNotNull(bill.billNumber), status = bill.status,

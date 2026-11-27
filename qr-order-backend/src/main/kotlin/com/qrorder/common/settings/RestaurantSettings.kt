@@ -80,6 +80,16 @@ class RestaurantSettings {
     @Column(name = "cleaning_auto_release", nullable = false)
     var cleaningAutoRelease: Boolean = false
 
+    /** Tài khoản nhận tiền cho VietQR (V4); cả ba cùng null = chưa cấu hình. */
+    @Column(name = "bank_bin", length = 6)
+    var bankBin: String? = null
+
+    @Column(name = "bank_account_no", length = 19)
+    var bankAccountNo: String? = null
+
+    @Column(name = "bank_account_name", length = 100)
+    var bankAccountName: String? = null
+
     @Column(name = "updated_by")
     var updatedBy: Long? = null
 

@@ -45,6 +45,41 @@ class RestaurantSettingsRulesTest {
         assertEquals(listOf("serviceFeeRate"), fields("0.08", "-0.01", true))
     }
 
+    private fun bankFields(bin: String?, account: String?, name: String?) =
+        RestaurantSettingsRules.validate(
+            UpdateRestaurantSettingsRequest(
+                vatRate = BigDecimal("0.08"), serviceFeeRate = BigDecimal.ZERO,
+                bankBin = bin, bankAccountNo = account, bankAccountName = name,
+            ),
+        ).map { it.field }
+
+    @Test
+    fun `bank account - all three or none (V4), blank counts as empty`() {
+        assertEquals(emptyList(), bankFields(null, null, null))
+        assertEquals(emptyList(), bankFields("  ", "", " "))
+        assertEquals(emptyList(), bankFields("970436", "0011001234567", "NGUYEN VAN A"))
+        assertEquals(listOf("bankAccountNo", "bankAccountName"), bankFields("970436", null, null))
+        assertEquals(listOf("bankBin"), bankFields(null, "0011001234567", "NGUYEN VAN A"))
+    }
+
+    @Test
+    fun `bank account - BIN has 6 digits and account number 6 to 19 digits`() {
+        assertEquals(listOf("bankBin"), bankFields("97043", "0011001234567", "A"))
+        assertEquals(listOf("bankBin"), bankFields("97043a", "0011001234567", "A"))
+        assertEquals(listOf("bankAccountNo"), bankFields("970436", "12345", "A"))
+        assertEquals(listOf("bankAccountNo"), bankFields("970436", "00110012345678901234", "A"))
+        assertEquals(listOf("bankAccountNo"), bankFields("970436", "0011-0012", "A"))
+        assertEquals(emptyList(), bankFields(" 970436 ", " 123456 ", " A  B "))
+    }
+
+    @Test
+    fun `bank account input is trimmed and collapses inner whitespace in the name`() {
+        val input = BankAccountInput.of(
+            UpdateRestaurantSettingsRequest(bankBin = " 970436 ", bankAccountNo = "123456", bankAccountName = "  NGUYEN   VAN A "),
+        )
+        assertEquals(BankAccountInput("970436", "123456", "NGUYEN VAN A"), input)
+    }
+
     @Test
     fun `normalizeRate keeps the value and uses scale 4`() {
         assertEquals(BigDecimal("0.0800"), RestaurantSettingsRules.normalizeRate(BigDecimal("0.08")))
